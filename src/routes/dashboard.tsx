@@ -9,9 +9,9 @@ import {
 import { useStoreVersion } from "@/hooks/useStore";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Lock, Plus, Search, Sparkles, Ticket, Trash2, CalendarDays,
+  Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
-  PartyPopper, MessageSquare, Phone,
+  PartyPopper, Phone,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
