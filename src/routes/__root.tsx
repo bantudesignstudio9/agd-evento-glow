@@ -56,7 +56,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&family=Cormorant+Garamond:wght@500;700&family=Bebas+Neue&display=swap" },
     ],
   }),
   shellComponent: RootShell,
@@ -83,8 +83,40 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Header />
       <Outlet />
-      <footer className="mx-auto mt-16 w-[min(1200px,95%)] py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} AGD Eventos · Cultura, Organização e Excelência
+      <footer className="mx-auto mt-16 w-[min(1200px,95%)] pb-10">
+        <div className="glass rounded-2xl p-6 md:p-8">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div>
+              <div className="font-display text-xl text-navy">AGD Eventos</div>
+              <div className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Cultura · Organização · Excelência
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Organização e gestão de eventos culturais, sociais e corporativos.
+                NIF: 5121045166
+              </p>
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-navy">Espaço</div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Anfiteatro do Gabinete Provincial da Cultura e Turismo do Huambo<br />
+                Cidade Alta — Avenida Imaculada da Conceição<br />
+                Província do Huambo, Angola
+              </p>
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-navy">Contactos</div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Seg–Sex · 08h00 às 16h00<br />
+                📞 925 788 112<br />
+                📞 995 788 112
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 border-t border-white/40 pt-4 text-center text-[11px] text-muted-foreground">
+            © {new Date().getFullYear()} AGD Eventos · Gestão terceirizada do espaço pelo Gabinete Provincial da Cultura e Turismo do Huambo
+          </div>
+        </div>
       </footer>
     </QueryClientProvider>
   );

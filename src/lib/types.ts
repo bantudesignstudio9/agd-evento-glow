@@ -10,6 +10,20 @@ export interface Package {
   permite_convites_digitais: boolean;
 }
 
+export interface DesignConvite {
+  bg: string;        // hex color
+  accent: string;    // hex color
+  fonte: string;     // font family token
+  textura: "liso" | "ondas" | "brilho";
+}
+
+export const DEFAULT_DESIGN: DesignConvite = {
+  bg: "#0f172a",
+  accent: "#d4a84c",
+  fonte: "Playfair Display",
+  textura: "brilho",
+};
+
 export interface Reserva {
   id: string;
   cliente_nome: string;
@@ -23,15 +37,24 @@ export interface Reserva {
   entidade_pagamento: string;
   referencia_pagamento: string;
   criado_em: string;
+  // Centro de Gestão
+  evento_nome?: string;
+  hora_inicio?: string;
+  hora_fim?: string;
+  mensagem_boas_vindas?: string;
+  design_convite?: DesignConvite;
 }
 
 export interface Convidado {
   id: string;
   reserva_id: string;
   nome_convidado: string;
+  telefone?: string;
   qr_code_hash: string;
   status_checkin: boolean;
 }
+
+export const CAPACIDADE_ESPACO = 150;
 
 export const PACKAGES: Package[] = [
   {
@@ -55,6 +78,19 @@ export const PACKAGES: Package[] = [
     ],
     permite_convites_digitais: true,
   },
+];
+
+export const FONT_OPTIONS = [
+  { label: "Playfair Display", value: "Playfair Display" },
+  { label: "Cormorant Garamond", value: "Cormorant Garamond" },
+  { label: "Inter", value: "Inter" },
+  { label: "Bebas Neue", value: "Bebas Neue" },
+];
+
+export const COR_PRESETS = [
+  "#0f172a", "#1e293b", "#3b2a4a", "#0c2340",
+  "#3d2914", "#1f3a2e", "#4a1d2f", "#2d1b3d",
+  "#ffffff", "#f5f0e0", "#d4a84c", "#8b6f3e",
 ];
 
 export const formatKz = (n: number) =>

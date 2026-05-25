@@ -1,4 +1,4 @@
-import type { Reserva, Convidado, PackageId, Period, Status } from "./types";
+import type { Reserva, Convidado, Period, Status } from "./types";
 
 const K_RES = "agd_reservas";
 const K_CON = "agd_convidados";
@@ -46,20 +46,31 @@ export const Store = {
     write(K_RES, all.map((r) => (r.id === id ? { ...r, status } : r)));
   },
 
+  atualizarReserva: (id: string, patch: Partial<Reserva>) => {
+    const all = read<Reserva>(K_RES);
+    write(K_RES, all.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  },
+
   convidadosDaReserva: (reserva_id: string) =>
     read<Convidado>(K_CON).filter((c) => c.reserva_id === reserva_id),
 
-  addConvidado: (reserva_id: string, nome: string): Convidado => {
+  addConvidado: (reserva_id: string, nome: string, telefone?: string): Convidado => {
     const all = read<Convidado>(K_CON);
     const c: Convidado = {
       id: crypto.randomUUID(),
       reserva_id,
       nome_convidado: nome,
+      telefone,
       qr_code_hash: `AGD-${reserva_id.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`.toUpperCase(),
       status_checkin: false,
     };
     write(K_CON, [...all, c]);
     return c;
+  },
+
+  atualizarConvidado: (id: string, patch: Partial<Convidado>) => {
+    const all = read<Convidado>(K_CON);
+    write(K_CON, all.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   },
 
   removerConvidado: (id: string) => {
@@ -76,7 +87,6 @@ export const Store = {
     return { ok: true, msg: "Entrada autorizada", convidado: all[idx] };
   },
 
-  // periodos disponiveis num dia
   periodosOcupados: (data: string): Period[] => {
     return read<Reserva>(K_RES)
       .filter((r) => r.data_evento === data && r.status !== "Cancelado")
@@ -90,8 +100,3 @@ export const Store = {
   },
   logoutAdmin: () => localStorage.removeItem(K_ADMIN),
 };
-
-export function useStoreVersion() {
-  // Bumps when store changes — components useSyncExternalStore-lite via state
-  return 0;
-}
