@@ -198,7 +198,25 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
   const [hi, setHi] = useState(reserva.hora_inicio ?? (reserva.periodo === "manha" ? "08:00" : "13:00"));
   const [hf, setHf] = useState(reserva.hora_fim ?? (reserva.periodo === "manha" ? "12:00" : "16:00"));
   const [msg, setMsg] = useState(reserva.mensagem_boas_vindas ?? "");
+  const local = reserva.local_evento ?? DEFAULT_LOCAL;
+  const [endereco, setEndereco] = useState(local.endereco);
+  const [lat, setLat] = useState<number | undefined>(local.lat);
+  const [lng, setLng] = useState<number | undefined>(local.lng);
+  const [geocoding, setGeocoding] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  async function localizarNoMapa() {
+    if (!endereco.trim()) return;
+    setGeocoding(true);
+    const r = await geocode(endereco);
+    setGeocoding(false);
+    if (r) {
+      setLat(r.lat); setLng(r.lng);
+      toast.success("Endereço localizado no mapa");
+    } else {
+      toast.error("Não foi possível localizar este endereço");
+    }
+  }
 
   function salvar() {
     Store.atualizarReserva(reserva.id, {
@@ -206,8 +224,10 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
       hora_inicio: hi,
       hora_fim: hf,
       mensagem_boas_vindas: msg,
+      local_evento: { endereco, lat, lng },
     });
     setSaved(true);
+    toast.success("Detalhes do evento guardados");
     setTimeout(() => setSaved(false), 2000);
   }
 
@@ -219,7 +239,7 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
           <h2 className="font-display text-2xl text-navy">Detalhes do Evento</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Estas informações serão usadas nos convites e na entrada do evento.
+          Estas informações serão usadas nos convites e no mapa partilhado com os convidados.
         </p>
 
         <div className="mt-5 space-y-4">
@@ -245,10 +265,34 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
             <textarea
               value={msg}
               onChange={(e) => setMsg(e.target.value)}
-              rows={4}
+              rows={3}
               placeholder="Será uma honra contar com a sua presença..."
               className="glass-input w-full resize-none rounded-xl px-3 py-2 text-sm outline-none"
             />
+          </Field>
+
+          <Field label="Endereço do evento">
+            <div className="flex gap-2">
+              <div className="glass-input flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
+                <MapPin className="h-4 w-4 text-accent" />
+                <input
+                  value={endereco}
+                  onChange={(e) => setEndereco(e.target.value)}
+                  placeholder="Rua, bairro, cidade…"
+                  className="w-full bg-transparent text-sm outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={localizarNoMapa}
+                disabled={geocoding}
+                className="btn-navy inline-flex items-center gap-2 rounded-xl px-3 text-sm disabled:opacity-50"
+              >
+                {geocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                Localizar
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">Powered by OpenStreetMap · sem chave necessária</p>
           </Field>
 
           <div className="flex items-center gap-3">
@@ -260,30 +304,18 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
         </div>
       </div>
 
-      <div className="glass-dark rounded-2xl p-6">
-        <div className="text-xs uppercase tracking-widest text-white/60">Local do evento</div>
-        <div className="mt-1 font-display text-xl">Anfiteatro do Gab. Prov. da Cultura</div>
-        <p className="mt-1 text-sm text-white/70">
-          Cidade Alta · Avenida Imaculada da Conceição · Huambo, Angola
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
-          {[
-            "Capacidade até 150 lugares",
-            "Ar condicionado",
-            "Som interno profissional",
-            "Sala inclusiva",
-            "Controlo e vigilância",
-            "Sonoplastia especializada",
-          ].map((x) => (
-            <div key={x} className="flex items-start gap-2 rounded-lg bg-white/5 p-2 ring-1 ring-white/10">
-              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-accent" />
-              <span className="text-white/80">{x}</span>
+      <div className="space-y-4">
+        <div className="glass overflow-hidden rounded-2xl p-2">
+          {lat != null && lng != null ? (
+            <MapaEvento lat={lat} lng={lng} label={endereco} height={260} />
+          ) : (
+            <div className="grid h-[260px] place-items-center rounded-2xl bg-white/40 text-center text-xs text-muted-foreground">
+              Use "Localizar" para mostrar o endereço no mapa.
             </div>
-          ))}
-        </div>
-        <div className="mt-5 flex items-center gap-2 text-xs text-white/70">
-          <Clock className="h-3.5 w-3.5" />
-          Seg–Sex · 08h00–16h00 · 925 788 112 / 995 788 112
+          )}
+          <div className="px-3 py-2 text-[11px] text-muted-foreground">
+            Capacidade até 150 lugares · Seg–Sex 08h–16h · 925 788 112 / 995 788 112
+          </div>
         </div>
       </div>
     </div>
