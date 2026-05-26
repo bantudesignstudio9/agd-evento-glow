@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Header } from "@/components/Header";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -82,6 +83,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Header />
+      <Toaster position="top-right" richColors />
       <Outlet />
       <footer className="mx-auto mt-16 w-[min(1200px,95%)] pb-10">
         <div className="glass rounded-2xl p-6 md:p-8">
