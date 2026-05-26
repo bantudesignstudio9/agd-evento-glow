@@ -575,10 +575,47 @@ function ConvitesTab({ reserva }: { reserva: Reserva }) {
   const lista = Store.convidadosDaReserva(reserva.id);
   const design = reserva.design_convite ?? DEFAULT_DESIGN;
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [enviandoId, setEnviandoId] = useState<string | null>(null);
+  const sendSms = useServerFn(enviarSms);
 
   async function baixarTodos() {
     for (const c of lista) {
       await gerarConvitePDF(reserva, c, design);
+    }
+  }
+
+  async function enviarSmsConvidado(c: Convidado) {
+    if (!c.telefone) { toast.error("Convidado sem telefone"); return; }
+    setEnviandoId(c.id);
+    const body = `AGD Eventos · ${reserva.evento_nome || reserva.tipo_evento}\nOlá ${c.nome_convidado}, está convidado(a) em ${format(new Date(reserva.data_evento), "d/MM/yyyy")}.\nCódigo: ${c.qr_code_hash}\nConvite: ${window.location.origin}/convite?c=${c.qr_code_hash}`;
+    try {
+      const r = await sendSms({ data: { to: c.telefone, body } });
+      if (r.ok) {
+        Store.atualizarConvidado(c.id, { sms_enviado_em: new Date().toISOString() });
+        toast.success(`SMS enviado para ${c.nome_convidado}`);
+      } else {
+        toast.error(`SMS falhou: ${r.error}`);
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Falha ao enviar SMS");
+    } finally {
+      setEnviandoId(null);
+    }
+  }
+
+  function abrirWhatsapp(c: Convidado) {
+    const link = whatsappLink(c.telefone, mensagemConvite(reserva, c));
+    if (!link) { toast.error("Telefone inválido para WhatsApp"); return; }
+    Store.atualizarConvidado(c.id, { whatsapp_enviado_em: new Date().toISOString() });
+    window.open(link, "_blank");
+  }
+
+  async function enviarTodosSms() {
+    const comTel = lista.filter((c) => c.telefone);
+    if (!comTel.length) { toast.error("Nenhum convidado com telefone"); return; }
+    toast.message(`A enviar ${comTel.length} SMS…`);
+    for (const c of comTel) {
+      await enviarSmsConvidado(c);
     }
   }
 
@@ -592,13 +629,19 @@ function ConvitesTab({ reserva }: { reserva: Reserva }) {
               <h2 className="font-display text-2xl text-navy">Convites Digitais</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              Um cartão único com QR Code para cada um dos {lista.length} convidados.
+              Um cartão único com QR Code para cada um dos {lista.length} convidados. Envie por SMS ou WhatsApp.
             </p>
           </div>
-          <button onClick={baixarTodos} disabled={lista.length === 0}
-            className="btn-gold inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
-            <Download className="h-4 w-4" /> Baixar todos
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={enviarTodosSms} disabled={lista.length === 0}
+              className="btn-navy inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
+              <Send className="h-4 w-4" /> Enviar SMS a todos
+            </button>
+            <button onClick={baixarTodos} disabled={lista.length === 0}
+              className="btn-gold inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
+              <Download className="h-4 w-4" /> Baixar todos
+            </button>
+          </div>
         </div>
       </div>
 
@@ -606,15 +649,32 @@ function ConvitesTab({ reserva }: { reserva: Reserva }) {
         {lista.map((c) => (
           <div key={c.id} className="flex flex-col items-center">
             <ConvitePreview reserva={reserva} design={design} convidadoNome={c.nome_convidado} hash={c.qr_code_hash} />
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
               <button onClick={() => gerarConvitePDF(reserva, c, design)} className="btn-glass inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs">
-                <Download className="h-3.5 w-3.5" /> Baixar PDF
+                <Download className="h-3.5 w-3.5" /> PDF
               </button>
               <button
                 onClick={() => { copiarLinkConvite(c); setCopiado(c.id); setTimeout(() => setCopiado(null), 1500); }}
                 className="btn-glass inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
               >
-                <Link2 className="h-3.5 w-3.5" /> {copiado === c.id ? "Copiado!" : "Copiar Link"}
+                <Link2 className="h-3.5 w-3.5" /> {copiado === c.id ? "Copiado!" : "Link"}
+              </button>
+              <button
+                onClick={() => enviarSmsConvidado(c)}
+                disabled={enviandoId === c.id || !c.telefone}
+                title={c.telefone ? "Enviar SMS via Twilio" : "Sem telefone"}
+                className="btn-navy inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs disabled:opacity-50"
+              >
+                {enviandoId === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                SMS{c.sms_enviado_em ? " ✓" : ""}
+              </button>
+              <button
+                onClick={() => abrirWhatsapp(c)}
+                disabled={!c.telefone}
+                title={c.telefone ? "Abrir conversa no WhatsApp" : "Sem telefone"}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp{c.whatsapp_enviado_em ? " ✓" : ""}
               </button>
             </div>
           </div>
