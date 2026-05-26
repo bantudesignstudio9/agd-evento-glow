@@ -11,9 +11,9 @@ export interface Package {
 }
 
 export interface DesignConvite {
-  bg: string;        // hex color
-  accent: string;    // hex color
-  fonte: string;     // font family token
+  bg: string;
+  accent: string;
+  fonte: string;
   textura: "liso" | "ondas" | "brilho";
 }
 
@@ -24,6 +24,18 @@ export const DEFAULT_DESIGN: DesignConvite = {
   textura: "brilho",
 };
 
+export interface LocalEvento {
+  endereco: string;
+  lat?: number;
+  lng?: number;
+}
+
+export const DEFAULT_LOCAL: LocalEvento = {
+  endereco: "Anfiteatro do Gabinete Provincial da Cultura e Turismo, Cidade Alta, Av. Imaculada da Conceição, Huambo, Angola",
+  lat: -12.7763,
+  lng: 15.7392,
+};
+
 export interface Reserva {
   id: string;
   cliente_nome: string;
@@ -31,18 +43,18 @@ export interface Reserva {
   cliente_telefone: string;
   tipo_evento: string;
   pacote_id: PackageId;
-  data_evento: string; // YYYY-MM-DD
+  data_evento: string;
   periodo: Period;
   status: Status;
   entidade_pagamento: string;
   referencia_pagamento: string;
   criado_em: string;
-  // Centro de Gestão
   evento_nome?: string;
   hora_inicio?: string;
   hora_fim?: string;
   mensagem_boas_vindas?: string;
   design_convite?: DesignConvite;
+  local_evento?: LocalEvento;
 }
 
 export interface Convidado {
@@ -52,6 +64,8 @@ export interface Convidado {
   telefone?: string;
   qr_code_hash: string;
   status_checkin: boolean;
+  sms_enviado_em?: string;
+  whatsapp_enviado_em?: string;
 }
 
 export const CAPACIDADE_ESPACO = 150;
