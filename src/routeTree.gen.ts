@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ConviteRouteImport } from './routes/convite'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -19,6 +20,11 @@ import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConviteRoute = ConviteRouteImport.update({
+  id: '/convite',
+  path: '/convite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -50,6 +56,7 @@ const AdminCheckinRoute = AdminCheckinRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/reservas': typeof AdminReservasRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/reservas': typeof AdminReservasRoute
@@ -66,6 +74,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/reservas': typeof AdminReservasRoute
@@ -76,16 +85,24 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/convite'
     | '/dashboard'
     | '/admin/checkin'
     | '/admin/reservas'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/admin/checkin' | '/admin/reservas' | '/admin'
+  to:
+    | '/'
+    | '/convite'
+    | '/dashboard'
+    | '/admin/checkin'
+    | '/admin/reservas'
+    | '/admin'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/convite'
     | '/dashboard'
     | '/admin/checkin'
     | '/admin/reservas'
@@ -95,6 +112,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ConviteRoute: typeof ConviteRoute
   DashboardRoute: typeof DashboardRoute
 }
 
@@ -105,6 +123,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/convite': {
+      id: '/convite'
+      path: '/convite'
+      fullPath: '/convite'
+      preLoaderRoute: typeof ConviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -162,6 +187,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  ConviteRoute: ConviteRoute,
   DashboardRoute: DashboardRoute,
 }
 export const routeTree = rootRouteImport

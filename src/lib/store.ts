@@ -21,6 +21,8 @@ export const Store = {
   getReserva: (id: string) => read<Reserva>(K_RES).find((r) => r.id === id),
   getReservaByRef: (ref: string) =>
     read<Reserva>(K_RES).find((r) => r.referencia_pagamento === ref),
+  getConvidadoByHash: (hash: string) =>
+    read<Convidado>(K_CON).find((c) => c.qr_code_hash === hash),
 
   reservasNoDia: (data: string) =>
     read<Reserva>(K_RES).filter((r) => r.data_evento === data && r.status !== "Cancelado"),

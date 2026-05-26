@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Store } from "@/lib/store";
 import {
-  PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN,
+  PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
   COR_PRESETS, FONT_OPTIONS, type DesignConvite, type Reserva, type Convidado,
 } from "@/lib/types";
 import { useStoreVersion } from "@/hooks/useStore";
@@ -11,11 +12,16 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
-  PartyPopper, Phone,
+  PartyPopper, Phone, MapPin, Send, MessageCircle, Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { gerarConvitePDF, copiarLinkConvite } from "@/lib/invite";
+import { MapaEvento } from "@/components/MapaEvento";
+import { geocode } from "@/lib/geocode";
+import { mensagemConvite, whatsappLink } from "@/lib/whatsapp";
+import { enviarSms } from "@/lib/sms.functions";
+import { toast } from "sonner";
 
 const search = z.object({ ref: z.string().optional() });
 
@@ -192,7 +198,25 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
   const [hi, setHi] = useState(reserva.hora_inicio ?? (reserva.periodo === "manha" ? "08:00" : "13:00"));
   const [hf, setHf] = useState(reserva.hora_fim ?? (reserva.periodo === "manha" ? "12:00" : "16:00"));
   const [msg, setMsg] = useState(reserva.mensagem_boas_vindas ?? "");
+  const local = reserva.local_evento ?? DEFAULT_LOCAL;
+  const [endereco, setEndereco] = useState(local.endereco);
+  const [lat, setLat] = useState<number | undefined>(local.lat);
+  const [lng, setLng] = useState<number | undefined>(local.lng);
+  const [geocoding, setGeocoding] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  async function localizarNoMapa() {
+    if (!endereco.trim()) return;
+    setGeocoding(true);
+    const r = await geocode(endereco);
+    setGeocoding(false);
+    if (r) {
+      setLat(r.lat); setLng(r.lng);
+      toast.success("Endereço localizado no mapa");
+    } else {
+      toast.error("Não foi possível localizar este endereço");
+    }
+  }
 
   function salvar() {
     Store.atualizarReserva(reserva.id, {
@@ -200,8 +224,10 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
       hora_inicio: hi,
       hora_fim: hf,
       mensagem_boas_vindas: msg,
+      local_evento: { endereco, lat, lng },
     });
     setSaved(true);
+    toast.success("Detalhes do evento guardados");
     setTimeout(() => setSaved(false), 2000);
   }
 
@@ -213,7 +239,7 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
           <h2 className="font-display text-2xl text-navy">Detalhes do Evento</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Estas informações serão usadas nos convites e na entrada do evento.
+          Estas informações serão usadas nos convites e no mapa partilhado com os convidados.
         </p>
 
         <div className="mt-5 space-y-4">
@@ -239,10 +265,34 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
             <textarea
               value={msg}
               onChange={(e) => setMsg(e.target.value)}
-              rows={4}
+              rows={3}
               placeholder="Será uma honra contar com a sua presença..."
               className="glass-input w-full resize-none rounded-xl px-3 py-2 text-sm outline-none"
             />
+          </Field>
+
+          <Field label="Endereço do evento">
+            <div className="flex gap-2">
+              <div className="glass-input flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
+                <MapPin className="h-4 w-4 text-accent" />
+                <input
+                  value={endereco}
+                  onChange={(e) => setEndereco(e.target.value)}
+                  placeholder="Rua, bairro, cidade…"
+                  className="w-full bg-transparent text-sm outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={localizarNoMapa}
+                disabled={geocoding}
+                className="btn-navy inline-flex items-center gap-2 rounded-xl px-3 text-sm disabled:opacity-50"
+              >
+                {geocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                Localizar
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">Powered by OpenStreetMap · sem chave necessária</p>
           </Field>
 
           <div className="flex items-center gap-3">
@@ -254,30 +304,18 @@ function EventoTab({ reserva }: { reserva: Reserva }) {
         </div>
       </div>
 
-      <div className="glass-dark rounded-2xl p-6">
-        <div className="text-xs uppercase tracking-widest text-white/60">Local do evento</div>
-        <div className="mt-1 font-display text-xl">Anfiteatro do Gab. Prov. da Cultura</div>
-        <p className="mt-1 text-sm text-white/70">
-          Cidade Alta · Avenida Imaculada da Conceição · Huambo, Angola
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
-          {[
-            "Capacidade até 150 lugares",
-            "Ar condicionado",
-            "Som interno profissional",
-            "Sala inclusiva",
-            "Controlo e vigilância",
-            "Sonoplastia especializada",
-          ].map((x) => (
-            <div key={x} className="flex items-start gap-2 rounded-lg bg-white/5 p-2 ring-1 ring-white/10">
-              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-accent" />
-              <span className="text-white/80">{x}</span>
+      <div className="space-y-4">
+        <div className="glass overflow-hidden rounded-2xl p-2">
+          {lat != null && lng != null ? (
+            <MapaEvento lat={lat} lng={lng} label={endereco} height={260} />
+          ) : (
+            <div className="grid h-[260px] place-items-center rounded-2xl bg-white/40 text-center text-xs text-muted-foreground">
+              Use "Localizar" para mostrar o endereço no mapa.
             </div>
-          ))}
-        </div>
-        <div className="mt-5 flex items-center gap-2 text-xs text-white/70">
-          <Clock className="h-3.5 w-3.5" />
-          Seg–Sex · 08h00–16h00 · 925 788 112 / 995 788 112
+          )}
+          <div className="px-3 py-2 text-[11px] text-muted-foreground">
+            Capacidade até 150 lugares · Seg–Sex 08h–16h · 925 788 112 / 995 788 112
+          </div>
         </div>
       </div>
     </div>
@@ -537,10 +575,47 @@ function ConvitesTab({ reserva }: { reserva: Reserva }) {
   const lista = Store.convidadosDaReserva(reserva.id);
   const design = reserva.design_convite ?? DEFAULT_DESIGN;
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [enviandoId, setEnviandoId] = useState<string | null>(null);
+  const sendSms = useServerFn(enviarSms);
 
   async function baixarTodos() {
     for (const c of lista) {
       await gerarConvitePDF(reserva, c, design);
+    }
+  }
+
+  async function enviarSmsConvidado(c: Convidado) {
+    if (!c.telefone) { toast.error("Convidado sem telefone"); return; }
+    setEnviandoId(c.id);
+    const body = `AGD Eventos · ${reserva.evento_nome || reserva.tipo_evento}\nOlá ${c.nome_convidado}, está convidado(a) em ${format(new Date(reserva.data_evento), "d/MM/yyyy")}.\nCódigo: ${c.qr_code_hash}\nConvite: ${window.location.origin}/convite?c=${c.qr_code_hash}`;
+    try {
+      const r = await sendSms({ data: { to: c.telefone, body } });
+      if (r.ok) {
+        Store.atualizarConvidado(c.id, { sms_enviado_em: new Date().toISOString() });
+        toast.success(`SMS enviado para ${c.nome_convidado}`);
+      } else {
+        toast.error(`SMS falhou: ${r.error}`);
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Falha ao enviar SMS");
+    } finally {
+      setEnviandoId(null);
+    }
+  }
+
+  function abrirWhatsapp(c: Convidado) {
+    const link = whatsappLink(c.telefone, mensagemConvite(reserva, c));
+    if (!link) { toast.error("Telefone inválido para WhatsApp"); return; }
+    Store.atualizarConvidado(c.id, { whatsapp_enviado_em: new Date().toISOString() });
+    window.open(link, "_blank");
+  }
+
+  async function enviarTodosSms() {
+    const comTel = lista.filter((c) => c.telefone);
+    if (!comTel.length) { toast.error("Nenhum convidado com telefone"); return; }
+    toast.message(`A enviar ${comTel.length} SMS…`);
+    for (const c of comTel) {
+      await enviarSmsConvidado(c);
     }
   }
 
@@ -554,13 +629,19 @@ function ConvitesTab({ reserva }: { reserva: Reserva }) {
               <h2 className="font-display text-2xl text-navy">Convites Digitais</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              Um cartão único com QR Code para cada um dos {lista.length} convidados.
+              Um cartão único com QR Code para cada um dos {lista.length} convidados. Envie por SMS ou WhatsApp.
             </p>
           </div>
-          <button onClick={baixarTodos} disabled={lista.length === 0}
-            className="btn-gold inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
-            <Download className="h-4 w-4" /> Baixar todos
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={enviarTodosSms} disabled={lista.length === 0}
+              className="btn-navy inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
+              <Send className="h-4 w-4" /> Enviar SMS a todos
+            </button>
+            <button onClick={baixarTodos} disabled={lista.length === 0}
+              className="btn-gold inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
+              <Download className="h-4 w-4" /> Baixar todos
+            </button>
+          </div>
         </div>
       </div>
 
@@ -568,15 +649,32 @@ function ConvitesTab({ reserva }: { reserva: Reserva }) {
         {lista.map((c) => (
           <div key={c.id} className="flex flex-col items-center">
             <ConvitePreview reserva={reserva} design={design} convidadoNome={c.nome_convidado} hash={c.qr_code_hash} />
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
               <button onClick={() => gerarConvitePDF(reserva, c, design)} className="btn-glass inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs">
-                <Download className="h-3.5 w-3.5" /> Baixar PDF
+                <Download className="h-3.5 w-3.5" /> PDF
               </button>
               <button
                 onClick={() => { copiarLinkConvite(c); setCopiado(c.id); setTimeout(() => setCopiado(null), 1500); }}
                 className="btn-glass inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
               >
-                <Link2 className="h-3.5 w-3.5" /> {copiado === c.id ? "Copiado!" : "Copiar Link"}
+                <Link2 className="h-3.5 w-3.5" /> {copiado === c.id ? "Copiado!" : "Link"}
+              </button>
+              <button
+                onClick={() => enviarSmsConvidado(c)}
+                disabled={enviandoId === c.id || !c.telefone}
+                title={c.telefone ? "Enviar SMS via Twilio" : "Sem telefone"}
+                className="btn-navy inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs disabled:opacity-50"
+              >
+                {enviandoId === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                SMS{c.sms_enviado_em ? " ✓" : ""}
+              </button>
+              <button
+                onClick={() => abrirWhatsapp(c)}
+                disabled={!c.telefone}
+                title={c.telefone ? "Abrir conversa no WhatsApp" : "Sem telefone"}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp{c.whatsapp_enviado_em ? " ✓" : ""}
               </button>
             </div>
           </div>
