@@ -130,7 +130,7 @@ export const Store = {
   async atualizarReserva(id: string, patch: Partial<Reserva>) {
     _reservas = _reservas.map((r) => (r.id === id ? { ...r, ...patch } : r));
     emit();
-    await supabase.from("reservas").update(patch).eq("id", id);
+    await supabase.from("reservas").update(patch as never).eq("id", id);
   },
 
   convidadosDaReserva: (reserva_id: string) =>
