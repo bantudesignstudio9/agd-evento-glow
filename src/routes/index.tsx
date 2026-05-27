@@ -24,7 +24,8 @@ function Index() {
   const [data, setData] = useState<Date | null>(null);
   const [periodo, setPeriodo] = useState<Period | null>(null);
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "" });
-  const [reservaCriada, setReservaCriada] = useState<ReturnType<typeof Store.criarReserva> | null>(null);
+  const [reservaCriada, setReservaCriada] = useState<Awaited<ReturnType<typeof Store.criarReserva>> | null>(null);
+  const [criando, setCriando] = useState(false);
 
   const navigate = useNavigate();
 
@@ -33,19 +34,24 @@ function Index() {
     (step === 2 && data && periodo) ||
     (step === 3 && form.nome && form.email && form.telefone && form.tipo_evento);
 
-  function finalizar() {
-    if (!pacote || !data || !periodo) return;
-    const r = Store.criarReserva({
-      cliente_nome: form.nome,
-      cliente_email: form.email,
-      cliente_telefone: form.telefone,
-      tipo_evento: form.tipo_evento,
-      pacote_id: pacote,
-      data_evento: format(data, "yyyy-MM-dd"),
-      periodo,
-    });
-    setReservaCriada(r);
-    setStep(4);
+  async function finalizar() {
+    if (!pacote || !data || !periodo || criando) return;
+    setCriando(true);
+    try {
+      const r = await Store.criarReserva({
+        cliente_nome: form.nome,
+        cliente_email: form.email,
+        cliente_telefone: form.telefone,
+        tipo_evento: form.tipo_evento,
+        pacote_id: pacote,
+        data_evento: format(data, "yyyy-MM-dd"),
+        periodo,
+      });
+      setReservaCriada(r);
+      setStep(4);
+    } finally {
+      setCriando(false);
+    }
   }
 
   return (
@@ -332,7 +338,7 @@ function StepDetalhes({ form, setForm }: { form: any; setForm: (f: any) => void 
   );
 }
 
-function StepCheckout({ reserva, onIr }: { reserva: ReturnType<typeof Store.criarReserva>; onIr: () => void }) {
+function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof Store.criarReserva>>; onIr: () => void }) {
   const pkg = PACKAGES.find((p) => p.id === reserva.pacote_id)!;
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_1.1fr]">
