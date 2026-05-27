@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { PACKAGES, formatKz, type Reserva } from "@/lib/types";
+import { PACKAGES, formatKz, type Reserva, type PackageId, type Period } from "@/lib/types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Plus, Trash2, X, XCircle, Pencil, Save } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/reservas")({
   component: AdminReservas,
@@ -15,20 +16,43 @@ function AdminReservas() {
   useStoreVersion();
   const reservas = [...Store.reservas()].sort((a, b) => b.criado_em.localeCompare(a.criado_em));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [filtro, setFiltro] = useState<"todos" | "Pendente" | "Pago" | "Cancelado">("todos");
   const selected = reservas.find((r) => r.id === selectedId);
+  const filtradas = filtro === "todos" ? reservas : reservas.filter((r) => r.status === filtro);
 
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_360px]">
-      <div className="glass-strong rounded-3xl p-6">
-        <h1 className="font-display text-2xl text-navy">Gestão de Reservas</h1>
-        <p className="text-sm text-muted-foreground">{reservas.length} reservas no total</p>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-border">
-          <table className="w-full text-sm">
+      <div className="glass-strong rounded-3xl p-4 md:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl text-navy">Gestão de Reservas</h1>
+            <p className="text-sm text-muted-foreground">{reservas.length} reservas no total</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value as typeof filtro)}
+              className="rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+            >
+              <option value="todos">Todos os estados</option>
+              <option value="Pendente">Pendentes</option>
+              <option value="Pago">Pagas</option>
+              <option value="Cancelado">Canceladas</option>
+            </select>
+            <button onClick={() => setCreating(true)} className="btn-navy inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+              <Plus className="h-4 w-4" /> Nova Reserva
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 -mx-4 overflow-x-auto md:mx-0 md:overflow-hidden md:rounded-2xl md:border md:border-border">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-white/70 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr><th className="p-3">Cliente</th><th className="p-3">Data</th><th className="p-3">Pacote</th><th className="p-3">Status</th></tr>
             </thead>
             <tbody>
-              {reservas.map((r) => (
+              {filtradas.map((r) => (
                 <tr key={r.id} onClick={() => setSelectedId(r.id)}
                     className={`cursor-pointer border-t border-border/60 transition hover:bg-white/60 ${selectedId === r.id ? "bg-white/80" : "bg-white/30"}`}>
                   <td className="p-3"><div className="font-medium">{r.cliente_nome}</div><div className="text-xs text-muted-foreground">{r.cliente_email}</div></td>
@@ -37,8 +61,8 @@ function AdminReservas() {
                   <td className="p-3"><StatusBadge status={r.status} /></td>
                 </tr>
               ))}
-              {reservas.length === 0 && (
-                <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Sem reservas ainda.</td></tr>
+              {filtradas.length === 0 && (
+                <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Sem reservas neste filtro.</td></tr>
               )}
             </tbody>
           </table>
@@ -46,57 +70,183 @@ function AdminReservas() {
       </div>
 
       <aside className="glass-strong h-fit rounded-3xl p-6">
-        {!selected && <p className="text-sm text-muted-foreground">Selecione uma reserva para ver detalhes.</p>}
-        {selected && <DetalheReserva r={selected} />}
+        {!selected && <p className="text-sm text-muted-foreground">Selecione uma reserva para ver detalhes ou crie uma nova.</p>}
+        {selected && <DetalheReserva r={selected} onClose={() => setSelectedId(null)} />}
       </aside>
+
+      {creating && <NovaReservaModal onClose={() => setCreating(false)} />}
     </div>
   );
 }
 
-function DetalheReserva({ r }: { r: Reserva }) {
+function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
   const pkg = PACKAGES.find((p) => p.id === r.pacote_id)!;
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    cliente_nome: r.cliente_nome,
+    cliente_email: r.cliente_email,
+    cliente_telefone: r.cliente_telefone,
+    tipo_evento: r.tipo_evento,
+    data_evento: r.data_evento,
+    periodo: r.periodo,
+    pacote_id: r.pacote_id,
+  });
+
+  async function salvar() {
+    await Store.atualizarReserva(r.id, form);
+    toast.success("Reserva atualizada");
+    setEditing(false);
+  }
+  async function eliminar() {
+    if (!confirm(`Eliminar definitivamente a reserva de ${r.cliente_nome}?`)) return;
+    const { supabase } = await import("@/integrations/supabase/client");
+    await supabase.from("reservas").delete().eq("id", r.id);
+    toast.success("Reserva eliminada");
+    onClose();
+  }
+
   return (
     <div className="space-y-3">
-      <div>
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">Reserva</div>
-        <div className="font-display text-xl text-navy">{r.cliente_nome}</div>
-        <div className="text-xs text-muted-foreground">{r.cliente_email} · {r.cliente_telefone}</div>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Reserva</div>
+          <div className="font-display text-xl text-navy">{r.cliente_nome}</div>
+          <div className="text-xs text-muted-foreground">{r.referencia_pagamento}</div>
+        </div>
+        <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
       </div>
-      <Row k="Evento" v={r.tipo_evento} />
-      <Row k="Pacote" v={`${pkg.nome} (${formatKz(pkg.preco)})`} />
-      <Row k="Data" v={format(new Date(r.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
-      <Row k="Período" v={r.periodo === "manha" ? "Manhã" : "Tarde"} />
-      <Row k="Entidade" v={r.entidade_pagamento} />
-      <Row k="Referência" v={r.referencia_pagamento} />
-      <Row k="Status" v={<StatusBadge status={r.status} />} />
 
-      <div className="pt-2">
+      {editing ? (
+        <div className="space-y-2">
+          <Inp label="Nome" v={form.cliente_nome} on={(v) => setForm({ ...form, cliente_nome: v })} />
+          <Inp label="Email" v={form.cliente_email} on={(v) => setForm({ ...form, cliente_email: v })} />
+          <Inp label="Telefone" v={form.cliente_telefone} on={(v) => setForm({ ...form, cliente_telefone: v })} />
+          <Inp label="Tipo de evento" v={form.tipo_evento} on={(v) => setForm({ ...form, tipo_evento: v })} />
+          <Inp label="Data" type="date" v={form.data_evento} on={(v) => setForm({ ...form, data_evento: v })} />
+          <Sel label="Período" v={form.periodo} on={(v) => setForm({ ...form, periodo: v as Period })}
+               opts={[{ v: "manha", l: "Manhã" }, { v: "tarde", l: "Tarde" }]} />
+          <Sel label="Pacote" v={form.pacote_id} on={(v) => setForm({ ...form, pacote_id: v as PackageId })}
+               opts={PACKAGES.map((p) => ({ v: p.id, l: p.nome }))} />
+        </div>
+      ) : (
+        <>
+          <Row k="E-mail" v={r.cliente_email} />
+          <Row k="Telefone" v={r.cliente_telefone} />
+          <Row k="Evento" v={r.tipo_evento} />
+          <Row k="Pacote" v={`${pkg.nome} (${formatKz(pkg.preco)})`} />
+          <Row k="Data" v={format(new Date(r.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
+          <Row k="Período" v={r.periodo === "manha" ? "Manhã" : "Tarde"} />
+          <Row k="Entidade" v={r.entidade_pagamento} />
+          <Row k="Status" v={<StatusBadge status={r.status} />} />
+        </>
+      )}
+
+      <div className="space-y-2 pt-2">
+        {editing ? (
+          <div className="flex gap-2">
+            <button onClick={salvar} className="btn-navy inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm">
+              <Save className="h-4 w-4" /> Guardar
+            </button>
+            <button onClick={() => setEditing(false)} className="rounded-xl border border-border bg-white/70 px-3 py-2 text-sm">Cancelar</button>
+          </div>
+        ) : (
+          <button onClick={() => setEditing(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-3 py-2 text-sm">
+            <Pencil className="h-4 w-4" /> Editar dados
+          </button>
+        )}
+
         {r.status === "Pendente" && (
-          <button
-            onClick={() => Store.atualizarStatus(r.id, "Pago")}
-            className="btn-gold inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium"
-          >
-            <CheckCircle2 className="h-4 w-4" /> Confirmar Pagamento Manual
+          <button onClick={() => Store.atualizarStatus(r.id, "Pago")} className="btn-gold inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
+            <CheckCircle2 className="h-4 w-4" /> Confirmar Pagamento
           </button>
         )}
         {r.status === "Pago" && (
-          <button
-            onClick={() => Store.atualizarStatus(r.id, "Pendente")}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-4 py-2 text-sm"
-          >
+          <button onClick={() => Store.atualizarStatus(r.id, "Pendente")} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-4 py-2 text-sm">
             Reverter para Pendente
           </button>
         )}
         {r.status !== "Cancelado" && (
-          <button
-            onClick={() => Store.atualizarStatus(r.id, "Cancelado")}
-            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm text-destructive"
-          >
+          <button onClick={() => Store.atualizarStatus(r.id, "Cancelado")} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" /> Cancelar Reserva
           </button>
         )}
+        <button onClick={eliminar} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-white px-4 py-2 text-sm text-destructive hover:bg-destructive/5">
+          <Trash2 className="h-4 w-4" /> Eliminar permanentemente
+        </button>
       </div>
     </div>
+  );
+}
+
+function NovaReservaModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({
+    cliente_nome: "", cliente_email: "", cliente_telefone: "",
+    tipo_evento: "", pacote_id: "prata" as PackageId,
+    data_evento: format(new Date(), "yyyy-MM-dd"),
+    periodo: "manha" as Period,
+  });
+  const [busy, setBusy] = useState(false);
+
+  async function criar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.cliente_nome || !form.cliente_email || !form.cliente_telefone || !form.tipo_evento) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await Store.criarReserva(form);
+      toast.success(`Reserva criada · Ref: ${r.referencia_pagamento}`);
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao criar");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={onClose}>
+      <form onClick={(e) => e.stopPropagation()} onSubmit={criar} className="glass-strong w-full max-w-lg rounded-2xl bg-white/95 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-xl text-navy">Nova Reserva (manual)</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="space-y-3">
+          <Inp label="Nome do cliente" v={form.cliente_nome} on={(v) => setForm({ ...form, cliente_nome: v })} />
+          <Inp label="E-mail" v={form.cliente_email} on={(v) => setForm({ ...form, cliente_email: v })} />
+          <Inp label="Telefone" v={form.cliente_telefone} on={(v) => setForm({ ...form, cliente_telefone: v })} />
+          <Inp label="Tipo de evento" v={form.tipo_evento} on={(v) => setForm({ ...form, tipo_evento: v })} />
+          <div className="grid grid-cols-2 gap-2">
+            <Inp label="Data" type="date" v={form.data_evento} on={(v) => setForm({ ...form, data_evento: v })} />
+            <Sel label="Período" v={form.periodo} on={(v) => setForm({ ...form, periodo: v as Period })}
+                 opts={[{ v: "manha", l: "Manhã" }, { v: "tarde", l: "Tarde" }]} />
+          </div>
+          <Sel label="Pacote" v={form.pacote_id} on={(v) => setForm({ ...form, pacote_id: v as PackageId })}
+               opts={PACKAGES.map((p) => ({ v: p.id, l: `${p.nome} · ${formatKz(p.preco)}` }))} />
+        </div>
+        <button disabled={busy} className="btn-gold mt-5 w-full rounded-xl py-2.5 text-sm font-medium disabled:opacity-50">
+          {busy ? "A criar…" : "Criar reserva"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function Inp({ label, v, on, type = "text" }: { label: string; v: string; on: (v: string) => void; type?: string }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input type={type} value={v} onChange={(e) => on(e.target.value)} className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none" />
+    </label>
+  );
+}
+function Sel({ label, v, on, opts }: { label: string; v: string; on: (v: string) => void; opts: { v: string; l: string }[] }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <select value={v} onChange={(e) => on(e.target.value)} className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none">
+        {opts.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
+    </label>
   );
 }
 

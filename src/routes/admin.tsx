@@ -1,8 +1,8 @@
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { CalendarDays, LayoutDashboard, ListChecks, LogOut, ScanLine, Shield } from "lucide-react";
+import { LayoutDashboard, ListChecks, LogOut, ScanLine, Shield } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   component: AdminLayout,
@@ -10,10 +10,17 @@ export const Route = createFileRoute("/admin")({
 
 function AdminLayout() {
   useStoreVersion();
-  const [auth, setAuth] = useState(Store.isAdmin());
+  const [mounted, setMounted] = useState(false);
+  const [auth, setAuth] = useState(false);
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState("");
   const path = useRouterState({ select: (r) => r.location.pathname });
+
+  useEffect(() => { setMounted(true); setAuth(Store.isAdmin()); }, []);
+
+  if (!mounted) {
+    return <main className="mx-auto mt-16 w-[min(420px,95%)]"><div className="glass-strong h-64 animate-pulse rounded-3xl" /></main>;
+  }
 
   if (!auth) {
     return (
