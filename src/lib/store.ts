@@ -1,98 +1,183 @@
+import { supabase } from "@/integrations/supabase/client";
 import type { Reserva, Convidado, Period, Status } from "./types";
 
-const K_RES = "agd_reservas";
-const K_CON = "agd_convidados";
 const K_ADMIN = "agd_admin";
 
-function read<T>(key: string): T[] {
-  if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
+// In-memory caches (hydrated from Supabase + kept in sync via Realtime)
+let _reservas: Reserva[] = [];
+let _convidados: Convidado[] = [];
+let _initialized = false;
+let _initPromise: Promise<void> | null = null;
+
+function emit() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("agd:update"));
+  }
 }
-function write<T>(key: string, v: T[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(v));
-  window.dispatchEvent(new Event("agd:update"));
+
+// Map DB row → Reserva type
+function rowToReserva(r: Record<string, unknown>): Reserva {
+  return r as unknown as Reserva;
+}
+function rowToConvidado(r: Record<string, unknown>): Convidado {
+  return r as unknown as Convidado;
+}
+
+async function hydrate() {
+  const [{ data: rs }, { data: cs }] = await Promise.all([
+    supabase.from("reservas").select("*").order("criado_em", { ascending: false }),
+    supabase.from("convidados").select("*"),
+  ]);
+  _reservas = (rs ?? []).map(rowToReserva);
+  _convidados = (cs ?? []).map(rowToConvidado);
+  emit();
+}
+
+function subscribe() {
+  supabase
+    .channel("agd-sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "reservas" }, (p) => {
+      if (p.eventType === "INSERT") {
+        const r = rowToReserva(p.new as Record<string, unknown>);
+        if (!_reservas.some((x) => x.id === r.id)) _reservas = [r, ..._reservas];
+      } else if (p.eventType === "UPDATE") {
+        const r = rowToReserva(p.new as Record<string, unknown>);
+        _reservas = _reservas.map((x) => (x.id === r.id ? r : x));
+      } else if (p.eventType === "DELETE") {
+        const id = (p.old as { id: string }).id;
+        _reservas = _reservas.filter((x) => x.id !== id);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "convidados" }, (p) => {
+      if (p.eventType === "INSERT") {
+        const c = rowToConvidado(p.new as Record<string, unknown>);
+        if (!_convidados.some((x) => x.id === c.id)) _convidados = [..._convidados, c];
+      } else if (p.eventType === "UPDATE") {
+        const c = rowToConvidado(p.new as Record<string, unknown>);
+        _convidados = _convidados.map((x) => (x.id === c.id ? c : x));
+      } else if (p.eventType === "DELETE") {
+        const id = (p.old as { id: string }).id;
+        _convidados = _convidados.filter((x) => x.id !== id);
+      }
+      emit();
+    })
+    .subscribe();
+}
+
+export function initStore(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (_initialized) return Promise.resolve();
+  if (_initPromise) return _initPromise;
+  _initPromise = (async () => {
+    await hydrate();
+    subscribe();
+    _initialized = true;
+  })();
+  return _initPromise;
 }
 
 export const Store = {
-  reservas: (): Reserva[] => read<Reserva>(K_RES),
-  convidados: (): Convidado[] => read<Convidado>(K_CON),
+  initialized: () => _initialized,
+  ready: initStore,
 
-  getReserva: (id: string) => read<Reserva>(K_RES).find((r) => r.id === id),
+  reservas: (): Reserva[] => _reservas,
+  convidados: (): Convidado[] => _convidados,
+
+  getReserva: (id: string) => _reservas.find((r) => r.id === id),
   getReservaByRef: (ref: string) =>
-    read<Reserva>(K_RES).find((r) => r.referencia_pagamento === ref),
+    _reservas.find((r) => r.referencia_pagamento === ref.trim()),
   getConvidadoByHash: (hash: string) =>
-    read<Convidado>(K_CON).find((c) => c.qr_code_hash === hash),
+    _convidados.find((c) => c.qr_code_hash === hash),
 
   reservasNoDia: (data: string) =>
-    read<Reserva>(K_RES).filter((r) => r.data_evento === data && r.status !== "Cancelado"),
+    _reservas.filter((r) => r.data_evento === data && r.status !== "Cancelado"),
 
-  criarReserva: (input: Omit<Reserva, "id" | "status" | "entidade_pagamento" | "referencia_pagamento" | "criado_em">): Reserva => {
-    const all = read<Reserva>(K_RES);
+  periodosOcupados: (data: string): Period[] =>
+    _reservas
+      .filter((r) => r.data_evento === data && r.status !== "Cancelado")
+      .map((r) => r.periodo),
+
+  async criarReserva(
+    input: Omit<Reserva, "id" | "status" | "entidade_pagamento" | "referencia_pagamento" | "criado_em">,
+  ): Promise<Reserva> {
     const ref = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join("");
     const entidade = String(99000 + Math.floor(Math.random() * 999));
-    const nova: Reserva = {
+    const payload = {
       ...input,
-      id: crypto.randomUUID(),
-      status: "Pendente",
+      status: "Pendente" as Status,
       entidade_pagamento: entidade,
       referencia_pagamento: ref,
-      criado_em: new Date().toISOString(),
     };
-    write(K_RES, [...all, nova]);
+    const { data, error } = await supabase
+      .from("reservas")
+      .insert(payload)
+      .select()
+      .single();
+    if (error || !data) throw new Error(error?.message || "Falha ao criar reserva");
+    const nova = rowToReserva(data);
+    if (!_reservas.some((x) => x.id === nova.id)) _reservas = [nova, ..._reservas];
+    emit();
     return nova;
   },
 
-  atualizarStatus: (id: string, status: Status) => {
-    const all = read<Reserva>(K_RES);
-    write(K_RES, all.map((r) => (r.id === id ? { ...r, status } : r)));
+  async atualizarStatus(id: string, status: Status) {
+    _reservas = _reservas.map((r) => (r.id === id ? { ...r, status } : r));
+    emit();
+    await supabase.from("reservas").update({ status }).eq("id", id);
   },
 
-  atualizarReserva: (id: string, patch: Partial<Reserva>) => {
-    const all = read<Reserva>(K_RES);
-    write(K_RES, all.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  async atualizarReserva(id: string, patch: Partial<Reserva>) {
+    _reservas = _reservas.map((r) => (r.id === id ? { ...r, ...patch } : r));
+    emit();
+    await supabase.from("reservas").update(patch).eq("id", id);
   },
 
   convidadosDaReserva: (reserva_id: string) =>
-    read<Convidado>(K_CON).filter((c) => c.reserva_id === reserva_id),
+    _convidados.filter((c) => c.reserva_id === reserva_id),
 
-  addConvidado: (reserva_id: string, nome: string, telefone?: string): Convidado => {
-    const all = read<Convidado>(K_CON);
-    const c: Convidado = {
-      id: crypto.randomUUID(),
+  async addConvidado(reserva_id: string, nome: string, telefone?: string): Promise<Convidado> {
+    const qr = `AGD-${reserva_id.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`.toUpperCase();
+    const payload = {
       reserva_id,
       nome_convidado: nome,
-      telefone,
-      qr_code_hash: `AGD-${reserva_id.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`.toUpperCase(),
+      telefone: telefone || null,
+      qr_code_hash: qr,
       status_checkin: false,
     };
-    write(K_CON, [...all, c]);
+    const { data, error } = await supabase
+      .from("convidados")
+      .insert(payload)
+      .select()
+      .single();
+    if (error || !data) throw new Error(error?.message || "Falha ao adicionar convidado");
+    const c = rowToConvidado(data);
+    if (!_convidados.some((x) => x.id === c.id)) _convidados = [..._convidados, c];
+    emit();
     return c;
   },
 
-  atualizarConvidado: (id: string, patch: Partial<Convidado>) => {
-    const all = read<Convidado>(K_CON);
-    write(K_CON, all.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  async atualizarConvidado(id: string, patch: Partial<Convidado>) {
+    _convidados = _convidados.map((c) => (c.id === id ? { ...c, ...patch } : c));
+    emit();
+    await supabase.from("convidados").update(patch).eq("id", id);
   },
 
-  removerConvidado: (id: string) => {
-    write(K_CON, read<Convidado>(K_CON).filter((c) => c.id !== id));
+  async removerConvidado(id: string) {
+    _convidados = _convidados.filter((c) => c.id !== id);
+    emit();
+    await supabase.from("convidados").delete().eq("id", id);
   },
 
-  checkin: (hash: string): { ok: boolean; msg: string; convidado?: Convidado } => {
-    const all = read<Convidado>(K_CON);
-    const idx = all.findIndex((c) => c.qr_code_hash === hash);
-    if (idx === -1) return { ok: false, msg: "QR Code inválido" };
-    if (all[idx].status_checkin) return { ok: false, msg: "Convidado já fez check-in", convidado: all[idx] };
-    all[idx] = { ...all[idx], status_checkin: true };
-    write(K_CON, all);
-    return { ok: true, msg: "Entrada autorizada", convidado: all[idx] };
-  },
-
-  periodosOcupados: (data: string): Period[] => {
-    return read<Reserva>(K_RES)
-      .filter((r) => r.data_evento === data && r.status !== "Cancelado")
-      .map((r) => r.periodo);
+  async checkin(hash: string): Promise<{ ok: boolean; msg: string; convidado?: Convidado }> {
+    const c = _convidados.find((x) => x.qr_code_hash === hash);
+    if (!c) return { ok: false, msg: "QR Code inválido" };
+    if (c.status_checkin) return { ok: false, msg: "Convidado já fez check-in", convidado: c };
+    const updated = { ...c, status_checkin: true };
+    _convidados = _convidados.map((x) => (x.id === c.id ? updated : x));
+    emit();
+    await supabase.from("convidados").update({ status_checkin: true }).eq("id", c.id);
+    return { ok: true, msg: "Entrada autorizada", convidado: updated };
   },
 
   isAdmin: () => typeof window !== "undefined" && localStorage.getItem(K_ADMIN) === "1",
