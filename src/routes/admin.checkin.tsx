@@ -50,11 +50,11 @@ function CheckinPage() {
     setScanning(false);
   }
 
-  function handleDecoded(hash: string) {
+  async function handleDecoded(hash: string) {
     const now = Date.now();
     if (lastScan.current.hash === hash && now - lastScan.current.at < 2500) return;
     lastScan.current = { hash, at: now };
-    const r = Store.checkin(hash.trim());
+    const r = await Store.checkin(hash.trim());
     setResult({ ok: r.ok, msg: r.msg, nome: r.convidado?.nome_convidado, ts: now });
   }
 
