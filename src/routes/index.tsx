@@ -34,19 +34,24 @@ function Index() {
     (step === 2 && data && periodo) ||
     (step === 3 && form.nome && form.email && form.telefone && form.tipo_evento);
 
-  function finalizar() {
-    if (!pacote || !data || !periodo) return;
-    const r = Store.criarReserva({
-      cliente_nome: form.nome,
-      cliente_email: form.email,
-      cliente_telefone: form.telefone,
-      tipo_evento: form.tipo_evento,
-      pacote_id: pacote,
-      data_evento: format(data, "yyyy-MM-dd"),
-      periodo,
-    });
-    setReservaCriada(r);
-    setStep(4);
+  async function finalizar() {
+    if (!pacote || !data || !periodo || criando) return;
+    setCriando(true);
+    try {
+      const r = await Store.criarReserva({
+        cliente_nome: form.nome,
+        cliente_email: form.email,
+        cliente_telefone: form.telefone,
+        tipo_evento: form.tipo_evento,
+        pacote_id: pacote,
+        data_evento: format(data, "yyyy-MM-dd"),
+        periodo,
+      });
+      setReservaCriada(r);
+      setStep(4);
+    } finally {
+      setCriando(false);
+    }
   }
 
   return (
