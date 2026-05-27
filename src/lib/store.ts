@@ -111,7 +111,7 @@ export const Store = {
     };
     const { data, error } = await supabase
       .from("reservas")
-      .insert(payload)
+      .insert(payload as never)
       .select()
       .single();
     if (error || !data) throw new Error(error?.message || "Falha ao criar reserva");
