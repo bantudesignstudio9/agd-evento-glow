@@ -338,7 +338,7 @@ function StepDetalhes({ form, setForm }: { form: any; setForm: (f: any) => void 
   );
 }
 
-function StepCheckout({ reserva, onIr }: { reserva: ReturnType<typeof Store.criarReserva>; onIr: () => void }) {
+function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof Store.criarReserva>>; onIr: () => void }) {
   const pkg = PACKAGES.find((p) => p.id === reserva.pacote_id)!;
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_1.1fr]">
