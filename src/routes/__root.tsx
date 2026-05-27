@@ -7,10 +7,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Toaster } from "@/components/ui/sonner";
-import { initStore } from "@/lib/store";
 
 import appCss from "../styles.css?url";
 
@@ -54,6 +52,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "AGD Eventos · Reserva de Eventos em Angola" },
       { name: "description", content: "AGD Eventos — Cultura, Organização e Excelência. Reserve o seu evento em Angola com pacotes Prata e Ouro." },
+      { property: "og:title", content: "AGD Eventos · Reserva de Eventos em Angola" },
+      { name: "twitter:title", content: "AGD Eventos · Reserva de Eventos em Angola" },
+      { property: "og:description", content: "AGD Eventos — Cultura, Organização e Excelência. Reserve o seu evento em Angola com pacotes Prata e Ouro." },
+      { name: "twitter:description", content: "AGD Eventos — Cultura, Organização e Excelência. Reserve o seu evento em Angola com pacotes Prata e Ouro." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/W1KMFsN8JVWKdSNpxNOXuNOZwPU2/social-images/social-1779899586159-IMG-20260520-WA0002.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/W1KMFsN8JVWKdSNpxNOXuNOZwPU2/social-images/social-1779899586159-IMG-20260520-WA0002.webp" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -82,7 +88,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => { initStore(); }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <Header />
