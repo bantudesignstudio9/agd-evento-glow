@@ -24,7 +24,8 @@ function Index() {
   const [data, setData] = useState<Date | null>(null);
   const [periodo, setPeriodo] = useState<Period | null>(null);
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "" });
-  const [reservaCriada, setReservaCriada] = useState<ReturnType<typeof Store.criarReserva> | null>(null);
+  const [reservaCriada, setReservaCriada] = useState<Awaited<ReturnType<typeof Store.criarReserva>> | null>(null);
+  const [criando, setCriando] = useState(false);
 
   const navigate = useNavigate();
 
