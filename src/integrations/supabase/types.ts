@@ -14,7 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      convidados: {
+        Row: {
+          id: string
+          nome_convidado: string
+          qr_code_hash: string
+          reserva_id: string
+          sms_enviado_em: string | null
+          status_checkin: boolean
+          telefone: string | null
+          whatsapp_enviado_em: string | null
+        }
+        Insert: {
+          id?: string
+          nome_convidado: string
+          qr_code_hash: string
+          reserva_id: string
+          sms_enviado_em?: string | null
+          status_checkin?: boolean
+          telefone?: string | null
+          whatsapp_enviado_em?: string | null
+        }
+        Update: {
+          id?: string
+          nome_convidado?: string
+          qr_code_hash?: string
+          reserva_id?: string
+          sms_enviado_em?: string | null
+          status_checkin?: boolean
+          telefone?: string | null
+          whatsapp_enviado_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convidados_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservas: {
+        Row: {
+          cliente_email: string
+          cliente_nome: string
+          cliente_telefone: string
+          criado_em: string
+          data_evento: string
+          design_convite: Json | null
+          entidade_pagamento: string
+          evento_nome: string | null
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          local_evento: Json | null
+          mensagem_boas_vindas: string | null
+          pacote_id: string
+          periodo: string
+          referencia_pagamento: string
+          status: string
+          tipo_evento: string
+        }
+        Insert: {
+          cliente_email: string
+          cliente_nome: string
+          cliente_telefone: string
+          criado_em?: string
+          data_evento: string
+          design_convite?: Json | null
+          entidade_pagamento: string
+          evento_nome?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          local_evento?: Json | null
+          mensagem_boas_vindas?: string | null
+          pacote_id: string
+          periodo: string
+          referencia_pagamento: string
+          status?: string
+          tipo_evento: string
+        }
+        Update: {
+          cliente_email?: string
+          cliente_nome?: string
+          cliente_telefone?: string
+          criado_em?: string
+          data_evento?: string
+          design_convite?: Json | null
+          entidade_pagamento?: string
+          evento_nome?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          local_evento?: Json | null
+          mensagem_boas_vindas?: string | null
+          pacote_id?: string
+          periodo?: string
+          referencia_pagamento?: string
+          status?: string
+          tipo_evento?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
