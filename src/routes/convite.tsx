@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
-import { useMemo } from "react";
-import { Store } from "@/lib/store";
+import { useEffect, useState } from "react";
+import { Store, initStore } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
 import { DEFAULT_DESIGN, DEFAULT_LOCAL, PACKAGES } from "@/lib/types";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
-import { CalendarDays, Clock, MapPin, PartyPopper, Download } from "lucide-react";
+import { CalendarDays, Clock, MapPin, PartyPopper, Download, Loader2 } from "lucide-react";
 import { MapaEvento } from "@/components/MapaEvento";
 import { gerarConvitePDF } from "@/lib/invite";
 
@@ -21,8 +21,27 @@ export const Route = createFileRoute("/convite")({
 function ConvitePage() {
   useStoreVersion();
   const { c: hash } = Route.useSearch();
-  const convidado = useMemo(() => (hash ? Store.getConvidadoByHash(hash) : undefined), [hash]);
+  const [ready, setReady] = useState(Store.initialized());
+
+  useEffect(() => {
+    let alive = true;
+    initStore().then(() => alive && setReady(true));
+    return () => { alive = false; };
+  }, []);
+
+  const convidado = hash && ready ? Store.getConvidadoByHash(hash) : undefined;
   const reserva = convidado ? Store.getReserva(convidado.reserva_id) : undefined;
+
+  if (!ready) {
+    return (
+      <main className="mx-auto mt-16 grid w-[min(560px,95%)] place-items-center">
+        <div className="glass-strong rounded-3xl p-10 text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-accent" />
+          <p className="mt-3 text-sm text-muted-foreground">A carregar convite…</p>
+        </div>
+      </main>
+    );
+  }
 
   if (!hash || !convidado || !reserva) {
     return (
@@ -45,11 +64,11 @@ function ConvitePage() {
   const light = isLight(design.bg);
   const txt = light ? "#171717" : "#ffffff";
   const subtle = light ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.78)";
+  const det = convidado.detalhes;
 
   return (
     <main className="mx-auto mt-10 w-[min(960px,95%)] pb-16">
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-        {/* Convite */}
         <div
           className="relative overflow-hidden rounded-3xl p-8 shadow-2xl"
           style={{
@@ -85,6 +104,14 @@ function ConvitePage() {
                 : reserva.periodo === "manha" ? "Manhã" : "Tarde"}
             </div>
 
+            {det && (det.mesa || det.lugar || det.area) && (
+              <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs" style={{ color: subtle }}>
+                {det.mesa && <span className="rounded-full border px-2 py-0.5" style={{ borderColor: `${design.accent}66` }}>Mesa {det.mesa}</span>}
+                {det.lugar && <span className="rounded-full border px-2 py-0.5" style={{ borderColor: `${design.accent}66` }}>Lugar {det.lugar}</span>}
+                {det.area && <span className="rounded-full border px-2 py-0.5 uppercase" style={{ borderColor: `${design.accent}66` }}>{det.area}</span>}
+              </div>
+            )}
+
             <div className="mt-6 rounded-2xl bg-white p-3">
               <QRCodeSVG value={convidado.qr_code_hash} size={140} />
             </div>
@@ -93,7 +120,6 @@ function ConvitePage() {
           </div>
         </div>
 
-        {/* Info + Mapa */}
         <div className="space-y-4">
           <div className="glass-strong rounded-3xl p-6">
             <div className="flex items-center gap-2 text-navy">

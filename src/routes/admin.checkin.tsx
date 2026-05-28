@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Store } from "@/lib/store";
-import { CheckCircle2, ScanLine, XCircle, Camera, CameraOff } from "lucide-react";
+import { useStoreVersion } from "@/hooks/useStore";
+import { CheckCircle2, ScanLine, XCircle, Camera, CameraOff, Ticket } from "lucide-react";
 
 export const Route = createFileRoute("/admin/checkin")({
   component: CheckinPage,
@@ -11,6 +12,9 @@ export const Route = createFileRoute("/admin/checkin")({
 type Result = { ok: boolean; msg: string; nome?: string; ts: number };
 
 function CheckinPage() {
+  useStoreVersion();
+  const [eventoRef, setEventoRef] = useState("");
+  const reservaAlvo = useMemo(() => (eventoRef.trim() ? Store.getReservaByRef(eventoRef) : undefined), [eventoRef]);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [manualHash, setManualHash] = useState("");
@@ -54,7 +58,15 @@ function CheckinPage() {
     const now = Date.now();
     if (lastScan.current.hash === hash && now - lastScan.current.at < 2500) return;
     lastScan.current = { hash, at: now };
-    const r = await Store.checkin(hash.trim());
+    const cleanHash = hash.trim();
+    if (reservaAlvo) {
+      const c = Store.getConvidadoByHash(cleanHash);
+      if (!c || c.reserva_id !== reservaAlvo.id) {
+        setResult({ ok: false, msg: "QR não pertence ao evento selecionado", ts: now });
+        return;
+      }
+    }
+    const r = await Store.checkin(cleanHash);
     setResult({ ok: r.ok, msg: r.msg, nome: r.convidado?.nome_convidado, ts: now });
   }
 
@@ -63,6 +75,28 @@ function CheckinPage() {
       <div>
         <div className="text-xs uppercase tracking-widest text-muted-foreground">No dia do evento</div>
         <h1 className="font-display text-3xl text-navy">Scanner de Check-in</h1>
+      </div>
+
+      <div className="glass rounded-2xl p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <label className="mb-1 block text-[11px] uppercase tracking-widest text-muted-foreground">Referência do evento (filtro)</label>
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-white/80 px-3 py-2">
+              <Ticket className="h-4 w-4 text-accent" />
+              <input
+                value={eventoRef}
+                onChange={(e) => setEventoRef(e.target.value)}
+                placeholder="9 dígitos · vazio = aceita qualquer evento"
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+          </div>
+          <div className="text-sm">
+            {eventoRef && (reservaAlvo
+              ? <span className="rounded-full bg-success/15 px-3 py-1 text-success">{reservaAlvo.evento_nome || reservaAlvo.tipo_evento} · {reservaAlvo.cliente_nome}</span>
+              : <span className="rounded-full bg-destructive/15 px-3 py-1 text-destructive">Referência inválida</span>)}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
