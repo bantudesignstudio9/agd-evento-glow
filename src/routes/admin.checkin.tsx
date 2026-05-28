@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Store } from "@/lib/store";
-import { CheckCircle2, ScanLine, XCircle, Camera, CameraOff } from "lucide-react";
+import { useStoreVersion } from "@/hooks/useStore";
+import { CheckCircle2, ScanLine, XCircle, Camera, CameraOff, Ticket } from "lucide-react";
 
 export const Route = createFileRoute("/admin/checkin")({
   component: CheckinPage,
@@ -11,6 +12,9 @@ export const Route = createFileRoute("/admin/checkin")({
 type Result = { ok: boolean; msg: string; nome?: string; ts: number };
 
 function CheckinPage() {
+  useStoreVersion();
+  const [eventoRef, setEventoRef] = useState("");
+  const reservaAlvo = useMemo(() => (eventoRef.trim() ? Store.getReservaByRef(eventoRef) : undefined), [eventoRef]);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [manualHash, setManualHash] = useState("");
