@@ -77,6 +77,28 @@ function CheckinPage() {
         <h1 className="font-display text-3xl text-navy">Scanner de Check-in</h1>
       </div>
 
+      <div className="glass rounded-2xl p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <label className="mb-1 block text-[11px] uppercase tracking-widest text-muted-foreground">Referência do evento (filtro)</label>
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-white/80 px-3 py-2">
+              <Ticket className="h-4 w-4 text-accent" />
+              <input
+                value={eventoRef}
+                onChange={(e) => setEventoRef(e.target.value)}
+                placeholder="9 dígitos · vazio = aceita qualquer evento"
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+          </div>
+          <div className="text-sm">
+            {eventoRef && (reservaAlvo
+              ? <span className="rounded-full bg-success/15 px-3 py-1 text-success">{reservaAlvo.evento_nome || reservaAlvo.tipo_evento} · {reservaAlvo.cliente_nome}</span>
+              : <span className="rounded-full bg-destructive/15 px-3 py-1 text-destructive">Referência inválida</span>)}
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
         <div className="glass-strong rounded-3xl p-6">
           <div className="mb-4 flex items-center justify-between">
