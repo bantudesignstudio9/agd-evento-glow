@@ -58,7 +58,15 @@ function CheckinPage() {
     const now = Date.now();
     if (lastScan.current.hash === hash && now - lastScan.current.at < 2500) return;
     lastScan.current = { hash, at: now };
-    const r = await Store.checkin(hash.trim());
+    const cleanHash = hash.trim();
+    if (reservaAlvo) {
+      const c = Store.getConvidadoByHash(cleanHash);
+      if (!c || c.reserva_id !== reservaAlvo.id) {
+        setResult({ ok: false, msg: "QR não pertence ao evento selecionado", ts: now });
+        return;
+      }
+    }
+    const r = await Store.checkin(cleanHash);
     setResult({ ok: r.ok, msg: r.msg, nome: r.convidado?.nome_convidado, ts: now });
   }
 
