@@ -23,29 +23,33 @@ function Index() {
   const [pacote, setPacote] = useState<PackageId | null>(null);
   const [data, setData] = useState<Date | null>(null);
   const [periodo, setPeriodo] = useState<Period | null>(null);
-  const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "" });
+  const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "", tipo_evento_outro: "", max_convidados: "" });
   const [reservaCriada, setReservaCriada] = useState<Awaited<ReturnType<typeof Store.criarReserva>> | null>(null);
   const [criando, setCriando] = useState(false);
 
   const navigate = useNavigate();
 
+  const tipoFinal = form.tipo_evento === "outro" ? form.tipo_evento_outro.trim() : form.tipo_evento;
+
   const podeAvancar =
     (step === 1 && pacote) ||
     (step === 2 && data && periodo) ||
-    (step === 3 && form.nome && form.email && form.telefone && form.tipo_evento);
+    (step === 3 && form.nome && form.email && form.telefone && tipoFinal);
 
   async function finalizar() {
-    if (!pacote || !data || !periodo || criando) return;
+    if (!pacote || !data || !periodo || criando || !tipoFinal) return;
     setCriando(true);
     try {
+      const maxC = parseInt(form.max_convidados, 10);
       const r = await Store.criarReserva({
         cliente_nome: form.nome,
         cliente_email: form.email,
         cliente_telefone: form.telefone,
-        tipo_evento: form.tipo_evento,
+        tipo_evento: tipoFinal,
         pacote_id: pacote,
         data_evento: format(data, "yyyy-MM-dd"),
         periodo,
+        max_convidados: Number.isFinite(maxC) && maxC > 0 ? Math.min(maxC, CAPACIDADE_ESPACO) : undefined,
       });
       setReservaCriada(r);
       setStep(4);
