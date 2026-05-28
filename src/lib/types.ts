@@ -55,6 +55,16 @@ export interface Reserva {
   mensagem_boas_vindas?: string;
   design_convite?: DesignConvite;
   local_evento?: LocalEvento;
+  max_convidados?: number;
+}
+
+export interface ConvidadoDetalhes {
+  mesa?: string;
+  lugar?: string;
+  area?: "vip" | "normal" | "palco" | "outra";
+  turma?: string;
+  funcao?: string;
+  observacoes?: string;
 }
 
 export interface Convidado {
@@ -66,6 +76,58 @@ export interface Convidado {
   status_checkin: boolean;
   sms_enviado_em?: string;
   whatsapp_enviado_em?: string;
+  detalhes?: ConvidadoDetalhes;
+}
+
+export const TIPOS_EVENTO: { value: string; label: string; categoria: string }[] = [
+  { value: "casamento", label: "Casamento", categoria: "Social" },
+  { value: "noivado", label: "Noivado / Pedida", categoria: "Social" },
+  { value: "aniversario_infantil", label: "Aniversário Infantil", categoria: "Social" },
+  { value: "aniversario_adulto", label: "Aniversário Adulto", categoria: "Social" },
+  { value: "bodas", label: "Bodas (Prata/Ouro)", categoria: "Social" },
+  { value: "cha_bebe", label: "Chá de Bebé / Revelação", categoria: "Social" },
+  { value: "cha_panela", label: "Chá de Panela / Bridal Shower", categoria: "Social" },
+  { value: "despedida_solteiro", label: "Despedida de Solteiro(a)", categoria: "Social" },
+  { value: "reuniao_familiar", label: "Reunião Familiar", categoria: "Social" },
+  { value: "jantar_gala", label: "Jantar de Gala", categoria: "Social" },
+  { value: "festa_tematica", label: "Festa Temática", categoria: "Social" },
+  { value: "formatura", label: "Formatura / Graduação", categoria: "Académico" },
+  { value: "defesa_tese", label: "Defesa de Tese", categoria: "Académico" },
+  { value: "curso", label: "Curso / Workshop", categoria: "Académico" },
+  { value: "palestra", label: "Palestra / Conferência", categoria: "Académico" },
+  { value: "seminario", label: "Seminário", categoria: "Académico" },
+  { value: "treinamento", label: "Treinamento Corporativo", categoria: "Corporativo" },
+  { value: "lancamento_produto", label: "Lançamento de Produto", categoria: "Corporativo" },
+  { value: "convencao", label: "Convenção / Assembleia", categoria: "Corporativo" },
+  { value: "premiacao", label: "Cerimónia de Premiação", categoria: "Corporativo" },
+  { value: "team_building", label: "Team Building", categoria: "Corporativo" },
+  { value: "feira", label: "Feira / Exposição", categoria: "Corporativo" },
+  { value: "networking", label: "Networking", categoria: "Corporativo" },
+  { value: "reuniao_empresarial", label: "Reunião Empresarial", categoria: "Corporativo" },
+  { value: "batizado", label: "Batizado", categoria: "Religioso" },
+  { value: "comunhao", label: "Primeira Comunhão", categoria: "Religioso" },
+  { value: "crisma", label: "Crisma / Confirmação", categoria: "Religioso" },
+  { value: "culto_especial", label: "Culto Especial", categoria: "Religioso" },
+  { value: "missa", label: "Missa de Acção de Graças", categoria: "Religioso" },
+  { value: "concerto", label: "Concerto / Show", categoria: "Cultural" },
+  { value: "exposicao_arte", label: "Exposição de Arte", categoria: "Cultural" },
+  { value: "desfile_moda", label: "Desfile de Moda", categoria: "Cultural" },
+  { value: "lancamento_livro", label: "Lançamento de Livro", categoria: "Cultural" },
+  { value: "festival", label: "Festival", categoria: "Cultural" },
+  { value: "outro", label: "Outro", categoria: "Social" },
+];
+
+export function labelTipoEvento(value: string): string {
+  return TIPOS_EVENTO.find((t) => t.value === value)?.label ?? value;
+}
+export function tipoEventoUsaMesas(tipo: string): boolean {
+  return ["casamento", "noivado", "bodas", "jantar_gala", "aniversario_adulto", "aniversario_infantil", "reuniao_familiar", "premiacao", "formatura", "batizado", "comunhao", "crisma"].includes(tipo);
+}
+export function tipoEventoUsaPoltrona(tipo: string): boolean {
+  return ["palestra", "seminario", "concerto", "desfile_moda", "defesa_tese", "lancamento_livro", "missa", "culto_especial", "lancamento_produto", "convencao", "festival"].includes(tipo);
+}
+export function tipoEventoUsaTurma(tipo: string): boolean {
+  return ["curso", "treinamento", "team_building", "workshop"].includes(tipo);
 }
 
 export const CAPACIDADE_ESPACO = 150;
