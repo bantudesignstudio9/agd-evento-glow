@@ -160,7 +160,7 @@ export const Store = {
   async atualizarConvidado(id: string, patch: Partial<Convidado>) {
     _convidados = _convidados.map((c) => (c.id === id ? { ...c, ...patch } : c));
     emit();
-    await supabase.from("convidados").update(patch).eq("id", id);
+    await supabase.from("convidados").update(patch as never).eq("id", id);
   },
 
   async removerConvidado(id: string) {
