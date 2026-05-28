@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       convidados: {
         Row: {
+          detalhes: Json | null
           id: string
           nome_convidado: string
           qr_code_hash: string
@@ -26,6 +27,7 @@ export type Database = {
           whatsapp_enviado_em: string | null
         }
         Insert: {
+          detalhes?: Json | null
           id?: string
           nome_convidado: string
           qr_code_hash: string
@@ -36,6 +38,7 @@ export type Database = {
           whatsapp_enviado_em?: string | null
         }
         Update: {
+          detalhes?: Json | null
           id?: string
           nome_convidado?: string
           qr_code_hash?: string
@@ -69,6 +72,7 @@ export type Database = {
           hora_inicio: string | null
           id: string
           local_evento: Json | null
+          max_convidados: number | null
           mensagem_boas_vindas: string | null
           pacote_id: string
           periodo: string
@@ -89,6 +93,7 @@ export type Database = {
           hora_inicio?: string | null
           id?: string
           local_evento?: Json | null
+          max_convidados?: number | null
           mensagem_boas_vindas?: string | null
           pacote_id: string
           periodo: string
@@ -109,6 +114,7 @@ export type Database = {
           hora_inicio?: string | null
           id?: string
           local_evento?: Json | null
+          max_convidados?: number | null
           mensagem_boas_vindas?: string | null
           pacote_id?: string
           periodo?: string
