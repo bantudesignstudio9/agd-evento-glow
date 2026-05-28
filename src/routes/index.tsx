@@ -316,28 +316,95 @@ function PeriodButton(props: { active: boolean; disabled: boolean; onClick: () =
   );
 }
 
-function StepDetalhes({ form, setForm }: { form: any; setForm: (f: any) => void }) {
-  const Field = ({ icon, label, name, type = "text", placeholder }: any) => (
+type FormState = { nome: string; email: string; telefone: string; tipo_evento: string; tipo_evento_outro: string; max_convidados: string };
+
+function DetalhesField({ icon, label, children }: { icon?: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
     <label className="block">
       <span className="mb-1 block text-xs uppercase tracking-widest text-muted-foreground">{label}</span>
       <div className="flex items-center gap-2 rounded-xl border border-border bg-white/80 px-3 py-2">
         {icon}
-        <input
-          type={type}
-          value={form[name]}
-          onChange={(e) => setForm({ ...form, [name]: e.target.value })}
-          placeholder={placeholder}
-          className="w-full bg-transparent text-sm outline-none"
-        />
+        {children}
       </div>
     </label>
   );
+}
+
+function StepDetalhes({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
+  const grupos = useMemo(() => {
+    const m = new Map<string, typeof TIPOS_EVENTO>();
+    TIPOS_EVENTO.forEach((t) => {
+      const arr = m.get(t.categoria) ?? [];
+      arr.push(t);
+      m.set(t.categoria, arr);
+    });
+    return Array.from(m.entries());
+  }, []);
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Field icon={<User className="h-4 w-4 text-muted-foreground" />} label="Nome completo" name="nome" placeholder="Ex: Alexandra Domingos" />
-      <Field icon={<Mail className="h-4 w-4 text-muted-foreground" />} label="E-mail" name="email" type="email" placeholder="voce@email.com" />
-      <Field icon={<Phone className="h-4 w-4 text-muted-foreground" />} label="Telefone" name="telefone" placeholder="+244 9XX XXX XXX" />
-      <Field icon={<PartyPopper className="h-4 w-4 text-muted-foreground" />} label="Tipo de evento" name="tipo_evento" placeholder="Casamento, aniversário, corporativo..." />
+      <DetalhesField icon={<User className="h-4 w-4 text-muted-foreground" />} label="Nome completo">
+        <input
+          value={form.nome}
+          onChange={(e) => setForm({ ...form, nome: e.target.value })}
+          placeholder="Ex: Alexandra Domingos"
+          className="w-full bg-transparent text-sm outline-none"
+        />
+      </DetalhesField>
+      <DetalhesField icon={<Mail className="h-4 w-4 text-muted-foreground" />} label="E-mail">
+        <input
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          placeholder="voce@email.com"
+          className="w-full bg-transparent text-sm outline-none"
+        />
+      </DetalhesField>
+      <DetalhesField icon={<Phone className="h-4 w-4 text-muted-foreground" />} label="Telefone">
+        <input
+          value={form.telefone}
+          onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+          placeholder="+244 9XX XXX XXX"
+          className="w-full bg-transparent text-sm outline-none"
+        />
+      </DetalhesField>
+      <DetalhesField icon={<PartyPopper className="h-4 w-4 text-muted-foreground" />} label="Tipo de evento">
+        <select
+          value={form.tipo_evento}
+          onChange={(e) => setForm({ ...form, tipo_evento: e.target.value })}
+          className="w-full bg-transparent text-sm outline-none"
+        >
+          <option value="">Selecione…</option>
+          {grupos.map(([cat, lista]) => (
+            <optgroup key={cat} label={cat}>
+              {lista.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </DetalhesField>
+      {form.tipo_evento === "outro" && (
+        <DetalhesField label="Especifique o tipo">
+          <input
+            value={form.tipo_evento_outro}
+            onChange={(e) => setForm({ ...form, tipo_evento_outro: e.target.value })}
+            placeholder="Descreva o tipo de evento"
+            className="w-full bg-transparent text-sm outline-none"
+          />
+        </DetalhesField>
+      )}
+      <DetalhesField icon={<Users className="h-4 w-4 text-muted-foreground" />} label={`Nº máximo de convidados (até ${CAPACIDADE_ESPACO})`}>
+        <input
+          type="number"
+          min={1}
+          max={CAPACIDADE_ESPACO}
+          value={form.max_convidados}
+          onChange={(e) => setForm({ ...form, max_convidados: e.target.value })}
+          placeholder="Ex: 80"
+          className="w-full bg-transparent text-sm outline-none"
+        />
+      </DetalhesField>
     </div>
   );
 }
