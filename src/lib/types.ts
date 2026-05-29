@@ -15,6 +15,9 @@ export interface DesignConvite {
   accent: string;
   fonte: string;
   textura: "liso" | "ondas" | "brilho";
+  logo_url?: string;
+  bg_image_url?: string;
+  animado?: boolean;
 }
 
 export const DEFAULT_DESIGN: DesignConvite = {
@@ -22,7 +25,9 @@ export const DEFAULT_DESIGN: DesignConvite = {
   accent: "#d4a84c",
   fonte: "Playfair Display",
   textura: "brilho",
+  animado: true,
 };
+
 
 export interface LocalEvento {
   endereco: string;

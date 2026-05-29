@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Store } from "@/lib/store";
 import {
   PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
-  COR_PRESETS, FONT_OPTIONS, type DesignConvite, type Reserva, type Convidado,
+  COR_PRESETS, FONT_OPTIONS, labelTipoEvento,
+  tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma,
+  type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes,
 } from "@/lib/types";
 import { useStoreVersion } from "@/hooks/useStore";
 import { QRCodeSVG } from "qrcode.react";
@@ -13,6 +15,7 @@ import {
   Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
   PartyPopper, Phone, MapPin, Send, MessageCircle, Loader2,
+  Upload, Sparkles, Image as ImageIcon, X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -21,7 +24,10 @@ import { MapaEvento } from "@/components/MapaEvento";
 import { geocode } from "@/lib/geocode";
 import { mensagemConvite, whatsappLink } from "@/lib/whatsapp";
 import { enviarSms } from "@/lib/sms.functions";
+import { analisarTemplate } from "@/lib/template-ai.functions";
+import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
+
 
 const search = z.object({ ref: z.string().optional() });
 
@@ -143,7 +149,7 @@ function ResumoTab({ reserva }: { reserva: Reserva }) {
           <Row k="Cliente" v={reserva.cliente_nome} />
           <Row k="E-mail" v={reserva.cliente_email} />
           <Row k="Telefone" v={reserva.cliente_telefone} />
-          <Row k="Tipo de evento" v={reserva.tipo_evento} />
+          <Row k="Tipo de evento" v={labelTipoEvento(reserva.tipo_evento)} />
           <Row k="Data" v={format(new Date(reserva.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
           <Row k="Período" v={reserva.periodo === "manha" ? "Manhã" : "Tarde"} />
           <Row k="Valor" v={formatKz(pkg.preco)} />
@@ -336,8 +342,12 @@ function ConvidadosTab({ reserva }: { reserva: Reserva }) {
   const lista = Store.convidadosDaReserva(reserva.id);
   const [nome, setNome] = useState("");
   const [tel, setTel] = useState("");
-  const limite = CAPACIDADE_ESPACO;
+  const limite = reserva.max_convidados ?? CAPACIDADE_ESPACO;
   const pct = Math.min(100, Math.round((lista.length / limite) * 100));
+
+  const usaMesas = tipoEventoUsaMesas(reserva.tipo_evento);
+  const usaPoltrona = tipoEventoUsaPoltrona(reserva.tipo_evento);
+  const usaTurma = tipoEventoUsaTurma(reserva.tipo_evento);
 
   function add(e: React.FormEvent) {
     e.preventDefault();
@@ -355,122 +365,188 @@ function ConvidadosTab({ reserva }: { reserva: Reserva }) {
               <Users className="h-5 w-5 text-accent" />
               <h2 className="font-display text-2xl text-navy">Lista de Convidados</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Adicione, edite e gerencie a presença dos convidados.</p>
+            <p className="text-sm text-muted-foreground">
+              {labelTipoEvento(reserva.tipo_evento)} ·{" "}
+              {usaMesas ? "atribua mesa e lugar a cada convidado" :
+                usaPoltrona ? "atribua poltrona e área (VIP/normal)" :
+                usaTurma ? "atribua turma/grupo a cada participante" :
+                "edite os detalhes individuais"}.
+            </p>
           </div>
           <div className="text-right">
             <div className="font-display text-3xl text-navy">{lista.length}<span className="text-base text-muted-foreground"> / {limite}</span></div>
-            <div className="text-xs text-muted-foreground">capacidade do espaço</div>
+            <div className="text-xs text-muted-foreground">capacidade máxima</div>
           </div>
         </div>
 
         <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/40">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, background: "var(--gradient-gold)" }}
-          />
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--gradient-gold)" }} />
         </div>
 
         <form onSubmit={add} className="mt-5 grid gap-2 md:grid-cols-[1.4fr_1fr_auto]">
-          <input
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Nome do convidado"
-            className="glass-input rounded-xl px-3 py-2 text-sm outline-none"
-          />
-          <input
-            value={tel}
-            onChange={(e) => setTel(e.target.value)}
-            placeholder="Telefone (opcional)"
-            className="glass-input rounded-xl px-3 py-2 text-sm outline-none"
-          />
-          <button
-            disabled={lista.length >= limite}
-            className="btn-navy inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50"
-          >
+          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do convidado"
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Telefone (opcional)"
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <button disabled={lista.length >= limite}
+            className="btn-navy inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
             <Plus className="h-4 w-4" /> Adicionar
           </button>
         </form>
       </div>
 
       <div className="glass overflow-hidden rounded-2xl">
-        <table className="w-full text-sm">
-          <thead className="bg-white/30 text-left text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">#</th>
-              <th className="px-4 py-3">Nome</th>
-              <th className="px-4 py-3">Telefone</th>
-              <th className="px-4 py-3">Código</th>
-              <th className="px-4 py-3">Check-in</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {lista.map((c, i) => (
-              <ConvidadoRow key={c.id} c={c} i={i + 1} />
-            ))}
-            {lista.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                Ainda sem convidados. Adicione o primeiro acima.
-              </td></tr>
-            )}
-          </tbody>
-        </table>
+        <div className="divide-y divide-white/30">
+          {lista.map((c, i) => (
+            <ConvidadoRow
+              key={c.id} c={c} i={i + 1}
+              usaMesas={usaMesas} usaPoltrona={usaPoltrona} usaTurma={usaTurma}
+            />
+          ))}
+          {lista.length === 0 && (
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+              Ainda sem convidados. Adicione o primeiro acima.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function ConvidadoRow({ c, i }: { c: Convidado; i: number }) {
+
+function ConvidadoRow({
+  c, i, usaMesas, usaPoltrona, usaTurma,
+}: {
+  c: Convidado; i: number;
+  usaMesas: boolean; usaPoltrona: boolean; usaTurma: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [nome, setNome] = useState(c.nome_convidado);
   const [tel, setTel] = useState(c.telefone ?? "");
+  const [det, setDet] = useState<ConvidadoDetalhes>(c.detalhes ?? {});
+
+  function setD<K extends keyof ConvidadoDetalhes>(k: K, v: ConvidadoDetalhes[K]) {
+    setDet((d) => ({ ...d, [k]: v }));
+  }
+
+  function salvar() {
+    Store.atualizarConvidado(c.id, {
+      nome_convidado: nome,
+      telefone: tel || undefined,
+      detalhes: det,
+    });
+    setEditing(false);
+    toast.success("Convidado atualizado");
+  }
+
+  const chips: string[] = [];
+  if (c.detalhes?.mesa) chips.push(`Mesa ${c.detalhes.mesa}`);
+  if (c.detalhes?.lugar) chips.push(`Lugar ${c.detalhes.lugar}`);
+  if (c.detalhes?.area) chips.push(c.detalhes.area.toUpperCase());
+  if (c.detalhes?.turma) chips.push(`Turma ${c.detalhes.turma}`);
+  if (c.detalhes?.funcao) chips.push(c.detalhes.funcao);
 
   return (
-    <tr className="border-t border-white/30">
-      <td className="px-4 py-3 text-muted-foreground">{i}</td>
-      <td className="px-4 py-3">
-        {editing ? (
-          <input value={nome} onChange={(e) => setNome(e.target.value)} className="glass-input rounded-md px-2 py-1 text-sm outline-none" />
-        ) : <span className="font-medium text-navy">{c.nome_convidado}</span>}
-      </td>
-      <td className="px-4 py-3">
-        {editing ? (
-          <input value={tel} onChange={(e) => setTel(e.target.value)} className="glass-input rounded-md px-2 py-1 text-sm outline-none" />
-        ) : (
-          <span className="flex items-center gap-1 text-muted-foreground">
-            {c.telefone && <Phone className="h-3 w-3" />}{c.telefone || "—"}
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">{c.qr_code_hash}</td>
-      <td className="px-4 py-3">
-        {c.status_checkin
-          ? <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs text-success">Presente</span>
-          : <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Pendente</span>}
-      </td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex justify-end gap-1">
+    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">#{i}</span>
           {editing ? (
-            <button
-              onClick={() => { Store.atualizarConvidado(c.id, { nome_convidado: nome, telefone: tel || undefined }); setEditing(false); }}
-              className="rounded-md bg-success/15 px-2 py-1 text-xs text-success"
-            >Guardar</button>
-          ) : (
-            <button onClick={() => setEditing(true)} className="rounded-md bg-white/60 px-2 py-1 text-xs">Editar</button>
-          )}
-          <button onClick={() => Store.removerConvidado(c.id)} className="rounded-md p-1 text-muted-foreground hover:text-destructive">
-            <Trash2 className="h-4 w-4" />
-          </button>
+            <input value={nome} onChange={(e) => setNome(e.target.value)}
+              className="glass-input rounded-md px-2 py-1 text-sm outline-none" />
+          ) : <span className="font-medium text-navy">{c.nome_convidado}</span>}
+          {c.status_checkin
+            ? <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] text-success">Presente</span>
+            : <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">Pendente</span>}
         </div>
-      </td>
-    </tr>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {editing ? (
+            <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Telefone"
+              className="glass-input rounded-md px-2 py-1 outline-none" />
+          ) : (
+            <span className="flex items-center gap-1">
+              {c.telefone && <Phone className="h-3 w-3" />}{c.telefone || "sem telefone"}
+            </span>
+          )}
+          <span className="font-mono text-[10px]">{c.qr_code_hash}</span>
+        </div>
+
+        {editing ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {usaMesas && (
+              <>
+                <DetInput label="Mesa" value={det.mesa ?? ""} onChange={(v) => setD("mesa", v)} />
+                <DetInput label="Lugar" value={det.lugar ?? ""} onChange={(v) => setD("lugar", v)} />
+              </>
+            )}
+            {usaPoltrona && (
+              <>
+                <DetInput label="Poltrona" value={det.lugar ?? ""} onChange={(v) => setD("lugar", v)} />
+                <label className="block">
+                  <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">Área</span>
+                  <select value={det.area ?? ""} onChange={(e) => setD("area", (e.target.value || undefined) as ConvidadoDetalhes["area"])}
+                    className="glass-input w-full rounded-md px-2 py-1 text-sm outline-none">
+                    <option value="">—</option>
+                    <option value="vip">VIP</option>
+                    <option value="normal">Normal</option>
+                    <option value="palco">Palco</option>
+                    <option value="outra">Outra</option>
+                  </select>
+                </label>
+              </>
+            )}
+            {usaTurma && (
+              <DetInput label="Turma / grupo" value={det.turma ?? ""} onChange={(v) => setD("turma", v)} />
+            )}
+            <DetInput label="Função (opcional)" value={det.funcao ?? ""} onChange={(v) => setD("funcao", v)} />
+            <DetInput label="Observações" value={det.observacoes ?? ""} onChange={(v) => setD("observacoes", v)} />
+          </div>
+        ) : chips.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {chips.map((t) => (
+              <span key={t} className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-navy">{t}</span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex shrink-0 gap-1">
+        {editing ? (
+          <button onClick={salvar} className="rounded-md bg-success/15 px-2 py-1 text-xs text-success">Guardar</button>
+        ) : (
+          <button onClick={() => setEditing(true)} className="rounded-md bg-white/60 px-2 py-1 text-xs">Editar</button>
+        )}
+        <button onClick={() => Store.removerConvidado(c.id)} className="rounded-md p-1 text-muted-foreground hover:text-destructive">
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
+
+function DetInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)}
+        className="glass-input w-full rounded-md px-2 py-1 text-sm outline-none" />
+    </label>
+  );
+}
+
 
 /* ---------------- DESIGNER ---------------- */
 function DesignTab({ reserva }: { reserva: Reserva }) {
   const [design, setDesign] = useState<DesignConvite>(reserva.design_convite ?? DEFAULT_DESIGN);
   const [saved, setSaved] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [analisando, setAnalisando] = useState(false);
+  const logoRef = useRef<HTMLInputElement>(null);
+  const bgRef = useRef<HTMLInputElement>(null);
+  const tplRef = useRef<HTMLInputElement>(null);
+  const analisar = useServerFn(analisarTemplate);
 
   function up<K extends keyof DesignConvite>(k: K, v: DesignConvite[K]) {
     setDesign((d) => ({ ...d, [k]: v }));
@@ -478,7 +554,57 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
   function salvar() {
     Store.atualizarReserva(reserva.id, { design_convite: design });
     setSaved(true);
+    toast.success("Design guardado");
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    kind: "logo" | "bg",
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const set = kind === "logo" ? setUploadingLogo : setUploadingBg;
+    set(true);
+    try {
+      const url = await uploadEventAsset(reserva.id, kind, file);
+      if (kind === "logo") up("logo_url", url);
+      else up("bg_image_url", url);
+      toast.success(kind === "logo" ? "Logotipo carregado" : "Imagem de fundo carregada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha no upload");
+    } finally {
+      set(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleTemplate(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAnalisando(true);
+    try {
+      const url = await uploadEventAsset(reserva.id, "template", file);
+      toast.message("A analisar template com IA…");
+      const r = await analisar({ data: { image_url: url } });
+      if (r.ok) {
+        setDesign((d) => ({
+          ...d,
+          bg: r.design.bg,
+          accent: r.design.accent,
+          fonte: r.design.fonte,
+          textura: r.design.textura,
+        }));
+        toast.success(`Design extraído: ${r.design.estilo}`);
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha na análise");
+    } finally {
+      setAnalisando(false);
+      e.target.value = "";
+    }
   }
 
   return (
@@ -488,51 +614,73 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
           <Palette className="h-5 w-5 text-accent" />
           <h2 className="font-display text-2xl text-navy">Invitation Designer</h2>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">Personalize o cartão digital que será enviado aos seus convidados.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Personalize o cartão digital — ou carregue um template e deixe a IA extrair o estilo automaticamente.
+        </p>
 
         <div className="mt-5 space-y-5">
+          {/* AI Template */}
+          <div className="rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-navy">
+              <Sparkles className="h-4 w-4 text-accent" />
+              Análise IA de Template
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Carregue uma imagem (JPG/PNG) do convite que quer replicar e a IA extrai cores, tipografia e textura.
+            </p>
+            <input ref={tplRef} type="file" accept="image/*" hidden onChange={handleTemplate} />
+            <button onClick={() => tplRef.current?.click()} disabled={analisando}
+              className="btn-gold mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs disabled:opacity-50">
+              {analisando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {analisando ? "A analisar…" : "Carregar template"}
+            </button>
+          </div>
+
+          {/* Logo + BG */}
+          <div className="grid grid-cols-2 gap-3">
+            <UploadBox
+              label="Logotipo"
+              url={design.logo_url}
+              uploading={uploadingLogo}
+              onPick={() => logoRef.current?.click()}
+              onClear={() => up("logo_url", undefined)}
+            />
+            <UploadBox
+              label="Imagem de fundo"
+              url={design.bg_image_url}
+              uploading={uploadingBg}
+              onPick={() => bgRef.current?.click()}
+              onClear={() => up("bg_image_url", undefined)}
+            />
+            <input ref={logoRef} type="file" accept="image/*" hidden onChange={(e) => handleUpload(e, "logo")} />
+            <input ref={bgRef} type="file" accept="image/*" hidden onChange={(e) => handleUpload(e, "bg")} />
+          </div>
+
           <Field label="Cor de fundo">
             <div className="flex flex-wrap gap-2">
               {COR_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => up("bg", c)}
+                <button key={c} onClick={() => up("bg", c)}
                   className={`h-9 w-9 rounded-lg ring-2 transition ${design.bg === c ? "ring-accent scale-110" : "ring-white/60 hover:scale-105"}`}
-                  style={{ background: c }}
-                  aria-label={c}
-                />
+                  style={{ background: c }} aria-label={c} />
               ))}
-              <input
-                type="color"
-                value={design.bg}
-                onChange={(e) => up("bg", e.target.value)}
-                className="h-9 w-9 cursor-pointer rounded-lg border-0 bg-transparent"
-              />
+              <input type="color" value={design.bg} onChange={(e) => up("bg", e.target.value)}
+                className="h-9 w-9 cursor-pointer rounded-lg border-0 bg-transparent" />
             </div>
           </Field>
 
-          <Field label="Cor de destaque (texto/bordas)">
-            <input
-              type="color"
-              value={design.accent}
-              onChange={(e) => up("accent", e.target.value)}
-              className="h-10 w-20 cursor-pointer rounded-lg border-0 bg-transparent"
-            />
+          <Field label="Cor de destaque">
+            <input type="color" value={design.accent} onChange={(e) => up("accent", e.target.value)}
+              className="h-10 w-20 cursor-pointer rounded-lg border-0 bg-transparent" />
           </Field>
 
           <Field label="Tipografia">
             <div className="grid grid-cols-2 gap-2">
               {FONT_OPTIONS.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => up("fonte", f.value)}
+                <button key={f.value} onClick={() => up("fonte", f.value)}
                   className={`rounded-xl border px-3 py-2 text-sm transition ${
                     design.fonte === f.value ? "border-accent bg-accent/15" : "border-white/60 bg-white/40 hover:bg-white/60"
                   }`}
-                  style={{ fontFamily: `'${f.value}', serif` }}
-                >
-                  {f.label}
-                </button>
+                  style={{ fontFamily: `'${f.value}', serif` }}>{f.label}</button>
               ))}
             </div>
           </Field>
@@ -540,16 +688,22 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
           <Field label="Textura">
             <div className="flex gap-2">
               {(["liso", "ondas", "brilho"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => up("textura", t)}
+                <button key={t} onClick={() => up("textura", t)}
                   className={`flex-1 rounded-xl border px-3 py-2 text-sm capitalize transition ${
                     design.textura === t ? "border-accent bg-accent/15" : "border-white/60 bg-white/40"
-                  }`}
-                >{t}</button>
+                  }`}>{t}</button>
               ))}
             </div>
           </Field>
+
+          <label className="flex items-center gap-3 rounded-xl bg-white/40 px-3 py-2">
+            <input type="checkbox" checked={!!design.animado}
+              onChange={(e) => up("animado", e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
+            <div>
+              <div className="text-sm font-medium text-navy">Convite animado</div>
+              <div className="text-xs text-muted-foreground">Brilho dourado, fade-in e flutuação suave ao abrir o convite.</div>
+            </div>
+          </label>
 
           <div className="flex items-center gap-3">
             <button onClick={salvar} className="btn-gold inline-flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-medium">
@@ -569,6 +723,30 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
     </div>
   );
 }
+
+function UploadBox({
+  label, url, uploading, onPick, onClear,
+}: { label: string; url?: string; uploading: boolean; onPick: () => void; onClear: () => void }) {
+  return (
+    <div className="rounded-xl border border-white/60 bg-white/40 p-2">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        {url && (
+          <button onClick={onClear} className="text-muted-foreground hover:text-destructive">
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      <button onClick={onPick} disabled={uploading}
+        className="relative grid h-20 w-full place-items-center overflow-hidden rounded-lg bg-white/60 text-xs text-muted-foreground hover:bg-white">
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> :
+          url ? <img src={url} alt={label} className="h-full w-full object-cover" /> :
+          <span className="flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Carregar</span>}
+      </button>
+    </div>
+  );
+}
+
 
 /* ---------------- CONVITES ---------------- */
 function ConvitesTab({ reserva }: { reserva: Reserva }) {
@@ -704,18 +882,39 @@ function ConvitePreview({
       ? `radial-gradient(ellipse at 50% 0%, ${design.accent}40, transparent 60%), ${design.bg}`
       : design.bg;
 
+  const bgStyle = design.bg_image_url
+    ? {
+        backgroundImage: `linear-gradient(${light ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)"}, ${light ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)"}), url(${design.bg_image_url})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : { background: texturaBg };
+
   return (
     <div
-      className="relative w-[280px] overflow-hidden rounded-2xl p-6 shadow-2xl"
-      style={{ background: texturaBg, color: txt, fontFamily: `'${design.fonte}', serif`, aspectRatio: "0.7" }}
+      className={`relative w-[280px] overflow-hidden rounded-2xl p-6 shadow-2xl ${design.animado ? "animate-fade-in" : ""}`}
+      style={{ ...bgStyle, color: txt, fontFamily: `'${design.fonte}', serif`, aspectRatio: "0.7" }}
     >
+      {design.animado && (
+        <div
+          className="pointer-events-none absolute -inset-1 opacity-60"
+          style={{
+            background: `radial-gradient(circle at 30% 20%, ${design.accent}55, transparent 50%)`,
+            animation: "pulse 4s ease-in-out infinite",
+          }}
+        />
+      )}
       <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: design.accent }} />
       <div className="absolute inset-x-0 bottom-0 h-1.5" style={{ background: design.accent }} />
       <div className="absolute inset-3 rounded-xl border" style={{ borderColor: `${design.accent}66` }} />
 
       <div className="relative flex h-full flex-col items-center text-center">
-        <div className="text-[9px] uppercase tracking-[0.3em]" style={{ color: design.accent }}>AGD Eventos</div>
-        <div className="mt-3 text-xl font-bold leading-tight" style={{ maxWidth: "100%" }}>
+        {design.logo_url ? (
+          <img src={design.logo_url} alt="logo" className="mb-2 max-h-10 object-contain" />
+        ) : (
+          <div className="text-[9px] uppercase tracking-[0.3em]" style={{ color: design.accent }}>AGD Eventos</div>
+        )}
+        <div className="mt-2 text-xl font-bold leading-tight" style={{ maxWidth: "100%" }}>
           {reserva.evento_nome || reserva.tipo_evento}
         </div>
         <div className="mt-1 text-[10px] uppercase tracking-widest" style={{ color: design.accent }}>Convite Especial</div>
@@ -746,6 +945,7 @@ function ConvitePreview({
     </div>
   );
 }
+
 
 function isLight(hex: string): boolean {
   const c = hex.replace("#", "");
