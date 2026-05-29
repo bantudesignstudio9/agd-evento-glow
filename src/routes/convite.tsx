@@ -66,23 +66,42 @@ function ConvitePage() {
   const subtle = light ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.78)";
   const det = convidado.detalhes;
 
+  const bgStyle = design.bg_image_url
+    ? {
+        backgroundImage: `linear-gradient(${light ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)"}, ${light ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)"}), url(${design.bg_image_url})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : {
+        background: `radial-gradient(ellipse at 50% 0%, ${design.accent}44, transparent 60%), ${design.bg}`,
+      };
+
   return (
     <main className="mx-auto mt-10 w-[min(960px,95%)] pb-16">
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
         <div
-          className="relative overflow-hidden rounded-3xl p-8 shadow-2xl"
-          style={{
-            background: `radial-gradient(ellipse at 50% 0%, ${design.accent}44, transparent 60%), ${design.bg}`,
-            color: txt,
-            fontFamily: `'${design.fonte}', serif`,
-          }}
+          className={`relative overflow-hidden rounded-3xl p-8 shadow-2xl ${design.animado ? "animate-fade-in" : ""}`}
+          style={{ ...bgStyle, color: txt, fontFamily: `'${design.fonte}', serif` }}
         >
+          {design.animado && (
+            <div
+              className="pointer-events-none absolute -inset-2 opacity-60"
+              style={{
+                background: `radial-gradient(circle at 30% 20%, ${design.accent}55, transparent 50%)`,
+                animation: "pulse 4s ease-in-out infinite",
+              }}
+            />
+          )}
           <div className="absolute inset-x-0 top-0 h-2" style={{ background: design.accent }} />
           <div className="absolute inset-x-0 bottom-0 h-2" style={{ background: design.accent }} />
           <div className="absolute inset-4 rounded-2xl border" style={{ borderColor: `${design.accent}55` }} />
 
           <div className="relative flex flex-col items-center text-center">
-            <div className="text-[10px] uppercase tracking-[0.3em]" style={{ color: design.accent }}>AGD Eventos</div>
+            {design.logo_url ? (
+              <img src={design.logo_url} alt="logo" className="mb-3 max-h-16 object-contain" />
+            ) : (
+              <div className="text-[10px] uppercase tracking-[0.3em]" style={{ color: design.accent }}>AGD Eventos</div>
+            )}
             <h1 className="mt-3 text-3xl font-bold leading-tight">{reserva.evento_nome || reserva.tipo_evento}</h1>
             <div className="mt-1 text-xs uppercase tracking-widest" style={{ color: design.accent }}>Convite Especial</div>
 
@@ -104,11 +123,12 @@ function ConvitePage() {
                 : reserva.periodo === "manha" ? "Manhã" : "Tarde"}
             </div>
 
-            {det && (det.mesa || det.lugar || det.area) && (
+            {det && (det.mesa || det.lugar || det.area || det.turma) && (
               <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs" style={{ color: subtle }}>
                 {det.mesa && <span className="rounded-full border px-2 py-0.5" style={{ borderColor: `${design.accent}66` }}>Mesa {det.mesa}</span>}
                 {det.lugar && <span className="rounded-full border px-2 py-0.5" style={{ borderColor: `${design.accent}66` }}>Lugar {det.lugar}</span>}
                 {det.area && <span className="rounded-full border px-2 py-0.5 uppercase" style={{ borderColor: `${design.accent}66` }}>{det.area}</span>}
+                {det.turma && <span className="rounded-full border px-2 py-0.5" style={{ borderColor: `${design.accent}66` }}>Turma {det.turma}</span>}
               </div>
             )}
 
@@ -119,6 +139,7 @@ function ConvitePage() {
             <div className="mt-1 text-[10px]" style={{ color: subtle }}>Apresente este QR à entrada</div>
           </div>
         </div>
+
 
         <div className="space-y-4">
           <div className="glass-strong rounded-3xl p-6">
