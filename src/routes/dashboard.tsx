@@ -540,6 +540,13 @@ function DetInput({ label, value, onChange }: { label: string; value: string; on
 function DesignTab({ reserva }: { reserva: Reserva }) {
   const [design, setDesign] = useState<DesignConvite>(reserva.design_convite ?? DEFAULT_DESIGN);
   const [saved, setSaved] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [analisando, setAnalisando] = useState(false);
+  const logoRef = useRef<HTMLInputElement>(null);
+  const bgRef = useRef<HTMLInputElement>(null);
+  const tplRef = useRef<HTMLInputElement>(null);
+  const analisar = useServerFn(analisarTemplate);
 
   function up<K extends keyof DesignConvite>(k: K, v: DesignConvite[K]) {
     setDesign((d) => ({ ...d, [k]: v }));
@@ -547,7 +554,57 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
   function salvar() {
     Store.atualizarReserva(reserva.id, { design_convite: design });
     setSaved(true);
+    toast.success("Design guardado");
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    kind: "logo" | "bg",
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const set = kind === "logo" ? setUploadingLogo : setUploadingBg;
+    set(true);
+    try {
+      const url = await uploadEventAsset(reserva.id, kind, file);
+      if (kind === "logo") up("logo_url", url);
+      else up("bg_image_url", url);
+      toast.success(kind === "logo" ? "Logotipo carregado" : "Imagem de fundo carregada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha no upload");
+    } finally {
+      set(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleTemplate(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAnalisando(true);
+    try {
+      const url = await uploadEventAsset(reserva.id, "template", file);
+      toast.message("A analisar template com IA…");
+      const r = await analisar({ data: { image_url: url } });
+      if (r.ok) {
+        setDesign((d) => ({
+          ...d,
+          bg: r.design.bg,
+          accent: r.design.accent,
+          fonte: r.design.fonte,
+          textura: r.design.textura,
+        }));
+        toast.success(`Design extraído: ${r.design.estilo}`);
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha na análise");
+    } finally {
+      setAnalisando(false);
+      e.target.value = "";
+    }
   }
 
   return (
@@ -557,51 +614,73 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
           <Palette className="h-5 w-5 text-accent" />
           <h2 className="font-display text-2xl text-navy">Invitation Designer</h2>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">Personalize o cartão digital que será enviado aos seus convidados.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Personalize o cartão digital — ou carregue um template e deixe a IA extrair o estilo automaticamente.
+        </p>
 
         <div className="mt-5 space-y-5">
+          {/* AI Template */}
+          <div className="rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-navy">
+              <Sparkles className="h-4 w-4 text-accent" />
+              Análise IA de Template
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Carregue uma imagem (JPG/PNG) do convite que quer replicar e a IA extrai cores, tipografia e textura.
+            </p>
+            <input ref={tplRef} type="file" accept="image/*" hidden onChange={handleTemplate} />
+            <button onClick={() => tplRef.current?.click()} disabled={analisando}
+              className="btn-gold mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs disabled:opacity-50">
+              {analisando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {analisando ? "A analisar…" : "Carregar template"}
+            </button>
+          </div>
+
+          {/* Logo + BG */}
+          <div className="grid grid-cols-2 gap-3">
+            <UploadBox
+              label="Logotipo"
+              url={design.logo_url}
+              uploading={uploadingLogo}
+              onPick={() => logoRef.current?.click()}
+              onClear={() => up("logo_url", undefined)}
+            />
+            <UploadBox
+              label="Imagem de fundo"
+              url={design.bg_image_url}
+              uploading={uploadingBg}
+              onPick={() => bgRef.current?.click()}
+              onClear={() => up("bg_image_url", undefined)}
+            />
+            <input ref={logoRef} type="file" accept="image/*" hidden onChange={(e) => handleUpload(e, "logo")} />
+            <input ref={bgRef} type="file" accept="image/*" hidden onChange={(e) => handleUpload(e, "bg")} />
+          </div>
+
           <Field label="Cor de fundo">
             <div className="flex flex-wrap gap-2">
               {COR_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => up("bg", c)}
+                <button key={c} onClick={() => up("bg", c)}
                   className={`h-9 w-9 rounded-lg ring-2 transition ${design.bg === c ? "ring-accent scale-110" : "ring-white/60 hover:scale-105"}`}
-                  style={{ background: c }}
-                  aria-label={c}
-                />
+                  style={{ background: c }} aria-label={c} />
               ))}
-              <input
-                type="color"
-                value={design.bg}
-                onChange={(e) => up("bg", e.target.value)}
-                className="h-9 w-9 cursor-pointer rounded-lg border-0 bg-transparent"
-              />
+              <input type="color" value={design.bg} onChange={(e) => up("bg", e.target.value)}
+                className="h-9 w-9 cursor-pointer rounded-lg border-0 bg-transparent" />
             </div>
           </Field>
 
-          <Field label="Cor de destaque (texto/bordas)">
-            <input
-              type="color"
-              value={design.accent}
-              onChange={(e) => up("accent", e.target.value)}
-              className="h-10 w-20 cursor-pointer rounded-lg border-0 bg-transparent"
-            />
+          <Field label="Cor de destaque">
+            <input type="color" value={design.accent} onChange={(e) => up("accent", e.target.value)}
+              className="h-10 w-20 cursor-pointer rounded-lg border-0 bg-transparent" />
           </Field>
 
           <Field label="Tipografia">
             <div className="grid grid-cols-2 gap-2">
               {FONT_OPTIONS.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => up("fonte", f.value)}
+                <button key={f.value} onClick={() => up("fonte", f.value)}
                   className={`rounded-xl border px-3 py-2 text-sm transition ${
                     design.fonte === f.value ? "border-accent bg-accent/15" : "border-white/60 bg-white/40 hover:bg-white/60"
                   }`}
-                  style={{ fontFamily: `'${f.value}', serif` }}
-                >
-                  {f.label}
-                </button>
+                  style={{ fontFamily: `'${f.value}', serif` }}>{f.label}</button>
               ))}
             </div>
           </Field>
@@ -609,16 +688,22 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
           <Field label="Textura">
             <div className="flex gap-2">
               {(["liso", "ondas", "brilho"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => up("textura", t)}
+                <button key={t} onClick={() => up("textura", t)}
                   className={`flex-1 rounded-xl border px-3 py-2 text-sm capitalize transition ${
                     design.textura === t ? "border-accent bg-accent/15" : "border-white/60 bg-white/40"
-                  }`}
-                >{t}</button>
+                  }`}>{t}</button>
               ))}
             </div>
           </Field>
+
+          <label className="flex items-center gap-3 rounded-xl bg-white/40 px-3 py-2">
+            <input type="checkbox" checked={!!design.animado}
+              onChange={(e) => up("animado", e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
+            <div>
+              <div className="text-sm font-medium text-navy">Convite animado</div>
+              <div className="text-xs text-muted-foreground">Brilho dourado, fade-in e flutuação suave ao abrir o convite.</div>
+            </div>
+          </label>
 
           <div className="flex items-center gap-3">
             <button onClick={salvar} className="btn-gold inline-flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-medium">
@@ -638,6 +723,30 @@ function DesignTab({ reserva }: { reserva: Reserva }) {
     </div>
   );
 }
+
+function UploadBox({
+  label, url, uploading, onPick, onClear,
+}: { label: string; url?: string; uploading: boolean; onPick: () => void; onClear: () => void }) {
+  return (
+    <div className="rounded-xl border border-white/60 bg-white/40 p-2">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        {url && (
+          <button onClick={onClear} className="text-muted-foreground hover:text-destructive">
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      <button onClick={onPick} disabled={uploading}
+        className="relative grid h-20 w-full place-items-center overflow-hidden rounded-lg bg-white/60 text-xs text-muted-foreground hover:bg-white">
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> :
+          url ? <img src={url} alt={label} className="h-full w-full object-cover" /> :
+          <span className="flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Carregar</span>}
+      </button>
+    </div>
+  );
+}
+
 
 /* ---------------- CONVITES ---------------- */
 function ConvitesTab({ reserva }: { reserva: Reserva }) {
