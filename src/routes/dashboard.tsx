@@ -415,52 +415,126 @@ function ConvidadosTab({ reserva }: { reserva: Reserva }) {
 }
 
 
-function ConvidadoRow({ c, i }: { c: Convidado; i: number }) {
+function ConvidadoRow({
+  c, i, usaMesas, usaPoltrona, usaTurma,
+}: {
+  c: Convidado; i: number;
+  usaMesas: boolean; usaPoltrona: boolean; usaTurma: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [nome, setNome] = useState(c.nome_convidado);
   const [tel, setTel] = useState(c.telefone ?? "");
+  const [det, setDet] = useState<ConvidadoDetalhes>(c.detalhes ?? {});
+
+  function setD<K extends keyof ConvidadoDetalhes>(k: K, v: ConvidadoDetalhes[K]) {
+    setDet((d) => ({ ...d, [k]: v }));
+  }
+
+  function salvar() {
+    Store.atualizarConvidado(c.id, {
+      nome_convidado: nome,
+      telefone: tel || undefined,
+      detalhes: det,
+    });
+    setEditing(false);
+    toast.success("Convidado atualizado");
+  }
+
+  const chips: string[] = [];
+  if (c.detalhes?.mesa) chips.push(`Mesa ${c.detalhes.mesa}`);
+  if (c.detalhes?.lugar) chips.push(`Lugar ${c.detalhes.lugar}`);
+  if (c.detalhes?.area) chips.push(c.detalhes.area.toUpperCase());
+  if (c.detalhes?.turma) chips.push(`Turma ${c.detalhes.turma}`);
+  if (c.detalhes?.funcao) chips.push(c.detalhes.funcao);
 
   return (
-    <tr className="border-t border-white/30">
-      <td className="px-4 py-3 text-muted-foreground">{i}</td>
-      <td className="px-4 py-3">
-        {editing ? (
-          <input value={nome} onChange={(e) => setNome(e.target.value)} className="glass-input rounded-md px-2 py-1 text-sm outline-none" />
-        ) : <span className="font-medium text-navy">{c.nome_convidado}</span>}
-      </td>
-      <td className="px-4 py-3">
-        {editing ? (
-          <input value={tel} onChange={(e) => setTel(e.target.value)} className="glass-input rounded-md px-2 py-1 text-sm outline-none" />
-        ) : (
-          <span className="flex items-center gap-1 text-muted-foreground">
-            {c.telefone && <Phone className="h-3 w-3" />}{c.telefone || "—"}
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">{c.qr_code_hash}</td>
-      <td className="px-4 py-3">
-        {c.status_checkin
-          ? <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs text-success">Presente</span>
-          : <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Pendente</span>}
-      </td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex justify-end gap-1">
+    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">#{i}</span>
           {editing ? (
-            <button
-              onClick={() => { Store.atualizarConvidado(c.id, { nome_convidado: nome, telefone: tel || undefined }); setEditing(false); }}
-              className="rounded-md bg-success/15 px-2 py-1 text-xs text-success"
-            >Guardar</button>
-          ) : (
-            <button onClick={() => setEditing(true)} className="rounded-md bg-white/60 px-2 py-1 text-xs">Editar</button>
-          )}
-          <button onClick={() => Store.removerConvidado(c.id)} className="rounded-md p-1 text-muted-foreground hover:text-destructive">
-            <Trash2 className="h-4 w-4" />
-          </button>
+            <input value={nome} onChange={(e) => setNome(e.target.value)}
+              className="glass-input rounded-md px-2 py-1 text-sm outline-none" />
+          ) : <span className="font-medium text-navy">{c.nome_convidado}</span>}
+          {c.status_checkin
+            ? <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] text-success">Presente</span>
+            : <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">Pendente</span>}
         </div>
-      </td>
-    </tr>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {editing ? (
+            <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Telefone"
+              className="glass-input rounded-md px-2 py-1 outline-none" />
+          ) : (
+            <span className="flex items-center gap-1">
+              {c.telefone && <Phone className="h-3 w-3" />}{c.telefone || "sem telefone"}
+            </span>
+          )}
+          <span className="font-mono text-[10px]">{c.qr_code_hash}</span>
+        </div>
+
+        {editing ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {usaMesas && (
+              <>
+                <DetInput label="Mesa" value={det.mesa ?? ""} onChange={(v) => setD("mesa", v)} />
+                <DetInput label="Lugar" value={det.lugar ?? ""} onChange={(v) => setD("lugar", v)} />
+              </>
+            )}
+            {usaPoltrona && (
+              <>
+                <DetInput label="Poltrona" value={det.lugar ?? ""} onChange={(v) => setD("lugar", v)} />
+                <label className="block">
+                  <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">Área</span>
+                  <select value={det.area ?? ""} onChange={(e) => setD("area", (e.target.value || undefined) as ConvidadoDetalhes["area"])}
+                    className="glass-input w-full rounded-md px-2 py-1 text-sm outline-none">
+                    <option value="">—</option>
+                    <option value="vip">VIP</option>
+                    <option value="normal">Normal</option>
+                    <option value="palco">Palco</option>
+                    <option value="outra">Outra</option>
+                  </select>
+                </label>
+              </>
+            )}
+            {usaTurma && (
+              <DetInput label="Turma / grupo" value={det.turma ?? ""} onChange={(v) => setD("turma", v)} />
+            )}
+            <DetInput label="Função (opcional)" value={det.funcao ?? ""} onChange={(v) => setD("funcao", v)} />
+            <DetInput label="Observações" value={det.observacoes ?? ""} onChange={(v) => setD("observacoes", v)} />
+          </div>
+        ) : chips.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {chips.map((t) => (
+              <span key={t} className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-navy">{t}</span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex shrink-0 gap-1">
+        {editing ? (
+          <button onClick={salvar} className="rounded-md bg-success/15 px-2 py-1 text-xs text-success">Guardar</button>
+        ) : (
+          <button onClick={() => setEditing(true)} className="rounded-md bg-white/60 px-2 py-1 text-xs">Editar</button>
+        )}
+        <button onClick={() => Store.removerConvidado(c.id)} className="rounded-md p-1 text-muted-foreground hover:text-destructive">
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
+
+function DetInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)}
+        className="glass-input w-full rounded-md px-2 py-1 text-sm outline-none" />
+    </label>
+  );
+}
+
 
 /* ---------------- DESIGNER ---------------- */
 function DesignTab({ reserva }: { reserva: Reserva }) {
