@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Store } from "@/lib/store";
 import {
   PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
-  COR_PRESETS, FONT_OPTIONS, type DesignConvite, type Reserva, type Convidado,
+  COR_PRESETS, FONT_OPTIONS, labelTipoEvento,
+  tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma,
+  type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes,
 } from "@/lib/types";
 import { useStoreVersion } from "@/hooks/useStore";
 import { QRCodeSVG } from "qrcode.react";
@@ -13,6 +15,7 @@ import {
   Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
   PartyPopper, Phone, MapPin, Send, MessageCircle, Loader2,
+  Upload, Sparkles, Image as ImageIcon, X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -21,7 +24,10 @@ import { MapaEvento } from "@/components/MapaEvento";
 import { geocode } from "@/lib/geocode";
 import { mensagemConvite, whatsappLink } from "@/lib/whatsapp";
 import { enviarSms } from "@/lib/sms.functions";
+import { analisarTemplate } from "@/lib/template-ai.functions";
+import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
+
 
 const search = z.object({ ref: z.string().optional() });
 
