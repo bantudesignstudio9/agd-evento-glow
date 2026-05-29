@@ -342,8 +342,12 @@ function ConvidadosTab({ reserva }: { reserva: Reserva }) {
   const lista = Store.convidadosDaReserva(reserva.id);
   const [nome, setNome] = useState("");
   const [tel, setTel] = useState("");
-  const limite = CAPACIDADE_ESPACO;
+  const limite = reserva.max_convidados ?? CAPACIDADE_ESPACO;
   const pct = Math.min(100, Math.round((lista.length / limite) * 100));
+
+  const usaMesas = tipoEventoUsaMesas(reserva.tipo_evento);
+  const usaPoltrona = tipoEventoUsaPoltrona(reserva.tipo_evento);
+  const usaTurma = tipoEventoUsaTurma(reserva.tipo_evento);
 
   function add(e: React.FormEvent) {
     e.preventDefault();
@@ -361,70 +365,55 @@ function ConvidadosTab({ reserva }: { reserva: Reserva }) {
               <Users className="h-5 w-5 text-accent" />
               <h2 className="font-display text-2xl text-navy">Lista de Convidados</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Adicione, edite e gerencie a presença dos convidados.</p>
+            <p className="text-sm text-muted-foreground">
+              {labelTipoEvento(reserva.tipo_evento)} ·{" "}
+              {usaMesas ? "atribua mesa e lugar a cada convidado" :
+                usaPoltrona ? "atribua poltrona e área (VIP/normal)" :
+                usaTurma ? "atribua turma/grupo a cada participante" :
+                "edite os detalhes individuais"}.
+            </p>
           </div>
           <div className="text-right">
             <div className="font-display text-3xl text-navy">{lista.length}<span className="text-base text-muted-foreground"> / {limite}</span></div>
-            <div className="text-xs text-muted-foreground">capacidade do espaço</div>
+            <div className="text-xs text-muted-foreground">capacidade máxima</div>
           </div>
         </div>
 
         <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/40">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, background: "var(--gradient-gold)" }}
-          />
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--gradient-gold)" }} />
         </div>
 
         <form onSubmit={add} className="mt-5 grid gap-2 md:grid-cols-[1.4fr_1fr_auto]">
-          <input
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Nome do convidado"
-            className="glass-input rounded-xl px-3 py-2 text-sm outline-none"
-          />
-          <input
-            value={tel}
-            onChange={(e) => setTel(e.target.value)}
-            placeholder="Telefone (opcional)"
-            className="glass-input rounded-xl px-3 py-2 text-sm outline-none"
-          />
-          <button
-            disabled={lista.length >= limite}
-            className="btn-navy inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50"
-          >
+          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do convidado"
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Telefone (opcional)"
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <button disabled={lista.length >= limite}
+            className="btn-navy inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
             <Plus className="h-4 w-4" /> Adicionar
           </button>
         </form>
       </div>
 
       <div className="glass overflow-hidden rounded-2xl">
-        <table className="w-full text-sm">
-          <thead className="bg-white/30 text-left text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">#</th>
-              <th className="px-4 py-3">Nome</th>
-              <th className="px-4 py-3">Telefone</th>
-              <th className="px-4 py-3">Código</th>
-              <th className="px-4 py-3">Check-in</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {lista.map((c, i) => (
-              <ConvidadoRow key={c.id} c={c} i={i + 1} />
-            ))}
-            {lista.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                Ainda sem convidados. Adicione o primeiro acima.
-              </td></tr>
-            )}
-          </tbody>
-        </table>
+        <div className="divide-y divide-white/30">
+          {lista.map((c, i) => (
+            <ConvidadoRow
+              key={c.id} c={c} i={i + 1}
+              usaMesas={usaMesas} usaPoltrona={usaPoltrona} usaTurma={usaTurma}
+            />
+          ))}
+          {lista.length === 0 && (
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+              Ainda sem convidados. Adicione o primeiro acima.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
 
 function ConvidadoRow({ c, i }: { c: Convidado; i: number }) {
   const [editing, setEditing] = useState(false);
