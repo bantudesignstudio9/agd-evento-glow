@@ -149,7 +149,7 @@ function ResumoTab({ reserva }: { reserva: Reserva }) {
           <Row k="Cliente" v={reserva.cliente_nome} />
           <Row k="E-mail" v={reserva.cliente_email} />
           <Row k="Telefone" v={reserva.cliente_telefone} />
-          <Row k="Tipo de evento" v={reserva.tipo_evento} />
+          <Row k="Tipo de evento" v={labelTipoEvento(reserva.tipo_evento)} />
           <Row k="Data" v={format(new Date(reserva.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
           <Row k="Período" v={reserva.periodo === "manha" ? "Manhã" : "Tarde"} />
           <Row k="Valor" v={formatKz(pkg.preco)} />
