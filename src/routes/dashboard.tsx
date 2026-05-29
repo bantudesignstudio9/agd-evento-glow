@@ -882,18 +882,39 @@ function ConvitePreview({
       ? `radial-gradient(ellipse at 50% 0%, ${design.accent}40, transparent 60%), ${design.bg}`
       : design.bg;
 
+  const bgStyle = design.bg_image_url
+    ? {
+        backgroundImage: `linear-gradient(${light ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)"}, ${light ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)"}), url(${design.bg_image_url})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : { background: texturaBg };
+
   return (
     <div
-      className="relative w-[280px] overflow-hidden rounded-2xl p-6 shadow-2xl"
-      style={{ background: texturaBg, color: txt, fontFamily: `'${design.fonte}', serif`, aspectRatio: "0.7" }}
+      className={`relative w-[280px] overflow-hidden rounded-2xl p-6 shadow-2xl ${design.animado ? "animate-fade-in" : ""}`}
+      style={{ ...bgStyle, color: txt, fontFamily: `'${design.fonte}', serif`, aspectRatio: "0.7" }}
     >
+      {design.animado && (
+        <div
+          className="pointer-events-none absolute -inset-1 opacity-60"
+          style={{
+            background: `radial-gradient(circle at 30% 20%, ${design.accent}55, transparent 50%)`,
+            animation: "pulse 4s ease-in-out infinite",
+          }}
+        />
+      )}
       <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: design.accent }} />
       <div className="absolute inset-x-0 bottom-0 h-1.5" style={{ background: design.accent }} />
       <div className="absolute inset-3 rounded-xl border" style={{ borderColor: `${design.accent}66` }} />
 
       <div className="relative flex h-full flex-col items-center text-center">
-        <div className="text-[9px] uppercase tracking-[0.3em]" style={{ color: design.accent }}>AGD Eventos</div>
-        <div className="mt-3 text-xl font-bold leading-tight" style={{ maxWidth: "100%" }}>
+        {design.logo_url ? (
+          <img src={design.logo_url} alt="logo" className="mb-2 max-h-10 object-contain" />
+        ) : (
+          <div className="text-[9px] uppercase tracking-[0.3em]" style={{ color: design.accent }}>AGD Eventos</div>
+        )}
+        <div className="mt-2 text-xl font-bold leading-tight" style={{ maxWidth: "100%" }}>
           {reserva.evento_nome || reserva.tipo_evento}
         </div>
         <div className="mt-1 text-[10px] uppercase tracking-widest" style={{ color: design.accent }}>Convite Especial</div>
@@ -924,6 +945,7 @@ function ConvitePreview({
     </div>
   );
 }
+
 
 function isLight(hex: string): boolean {
   const c = hex.replace("#", "");
