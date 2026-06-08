@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PACKAGES, type PackageId, type Period, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO } from "@/lib/types";
-import { Store } from "@/lib/store";
-import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users } from "lucide-react";
+import { Store, initStore } from "@/lib/store";
+import { useStoreVersion } from "@/hooks/useStore";
+import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users, Building2 } from "lucide-react";
 import { addDays, addMonths, eachDayOfInterval, endOfMonth, format, isBefore, isSameDay, isSameMonth, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { pt } from "date-fns/locale";
 
