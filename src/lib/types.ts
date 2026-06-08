@@ -170,6 +170,9 @@ export function tipoEventoUsaPoltrona(tipo: string): boolean {
 export function tipoEventoUsaTurma(tipo: string): boolean {
   return ["curso", "treinamento", "team_building", "workshop"].includes(tipo);
 }
+export function tipoEventoUsaSessoes(tipo: string): boolean {
+  return ["curso", "treinamento", "team_building", "workshop", "seminario", "palestra", "convencao"].includes(tipo);
+}
 
 export const CAPACIDADE_ESPACO = 150;
 
