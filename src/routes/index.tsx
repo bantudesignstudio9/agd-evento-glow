@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PACKAGES, type PackageId, type Period, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO } from "@/lib/types";
-import { Store } from "@/lib/store";
-import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users } from "lucide-react";
+import { Store, initStore } from "@/lib/store";
+import { useStoreVersion } from "@/hooks/useStore";
+import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users, Building2 } from "lucide-react";
 import { addDays, addMonths, eachDayOfInterval, endOfMonth, format, isBefore, isSameDay, isSameMonth, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -19,13 +20,22 @@ export const Route = createFileRoute("/")({
 type Step = 1 | 2 | 3 | 4;
 
 function Index() {
+  useStoreVersion();
+  useEffect(() => { initStore(); }, []);
   const [step, setStep] = useState<Step>(1);
   const [pacote, setPacote] = useState<PackageId | null>(null);
   const [data, setData] = useState<Date | null>(null);
   const [periodo, setPeriodo] = useState<Period | null>(null);
+  const espacosAtivos = Store.espacosAtivos();
+  const [espacoId, setEspacoId] = useState<string>("");
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "", tipo_evento_outro: "", max_convidados: "" });
   const [reservaCriada, setReservaCriada] = useState<Awaited<ReturnType<typeof Store.criarReserva>> | null>(null);
   const [criando, setCriando] = useState(false);
+
+  // Pré-selecciona o primeiro espaço se ainda nenhum
+  useEffect(() => {
+    if (!espacoId && espacosAtivos[0]) setEspacoId(espacosAtivos[0].id);
+  }, [espacoId, espacosAtivos]);
 
   const navigate = useNavigate();
 
@@ -49,6 +59,7 @@ function Index() {
         pacote_id: pacote,
         data_evento: format(data, "yyyy-MM-dd"),
         periodo,
+        espaco_id: espacoId || null,
         max_convidados: Number.isFinite(maxC) && maxC > 0 ? Math.min(maxC, CAPACIDADE_ESPACO) : undefined,
       });
       setReservaCriada(r);
@@ -100,12 +111,31 @@ function Index() {
 
         {step === 1 && <StepPacotes pacote={pacote} setPacote={setPacote} />}
         {step === 2 && (
-          <StepCalendario
-            data={data}
-            setData={setData}
-            periodo={periodo}
-            setPeriodo={setPeriodo}
-          />
+          <div className="space-y-4">
+            {espacosAtivos.length > 1 && (
+              <div className="glass rounded-2xl p-4">
+                <label className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  <Building2 className="h-3 w-3" /> Espaço pretendido
+                </label>
+                <select
+                  value={espacoId}
+                  onChange={(e) => { setEspacoId(e.target.value); setData(null); setPeriodo(null); }}
+                  className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm outline-none"
+                >
+                  {espacosAtivos.map((e) => (
+                    <option key={e.id} value={e.id}>{e.nome} — cap. {e.capacidade} ({e.endereco.split(",")[0]})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <StepCalendario
+              data={data}
+              setData={setData}
+              periodo={periodo}
+              setPeriodo={setPeriodo}
+              espacoId={espacoId || null}
+            />
+          </div>
         )}
         {step === 3 && <StepDetalhes form={form} setForm={setForm} />}
         {step === 4 && reservaCriada && <StepCheckout reserva={reservaCriada} onIr={() => navigate({ to: "/dashboard", search: { ref: reservaCriada.referencia_pagamento } as any })} />}
@@ -205,10 +235,11 @@ function StepPacotes({ pacote, setPacote }: { pacote: PackageId | null; setPacot
 }
 
 function StepCalendario({
-  data, setData, periodo, setPeriodo,
+  data, setData, periodo, setPeriodo, espacoId,
 }: {
   data: Date | null; setData: (d: Date) => void;
   periodo: Period | null; setPeriodo: (p: Period | null) => void;
+  espacoId?: string | null;
 }) {
   const [cursor, setCursor] = useState(new Date());
   const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
@@ -216,12 +247,12 @@ function StepCalendario({
   const days = eachDayOfInterval({ start, end });
   const today = new Date();
 
-  const ocupados = useMemo(() => (data ? Store.periodosOcupados(format(data, "yyyy-MM-dd")) : []), [data]);
+  const ocupados = useMemo(() => (data ? Store.periodosOcupados(format(data, "yyyy-MM-dd"), espacoId ?? undefined) : []), [data, espacoId]);
   const manhaOcupada = ocupados.includes("manha");
   const tardeOcupada = ocupados.includes("tarde");
 
   function diaTotalmenteOcupado(d: Date) {
-    const ps = Store.periodosOcupados(format(d, "yyyy-MM-dd"));
+    const ps = Store.periodosOcupados(format(d, "yyyy-MM-dd"), espacoId ?? undefined);
     return ps.includes("manha") && ps.includes("tarde");
   }
 

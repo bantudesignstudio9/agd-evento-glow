@@ -6,8 +6,8 @@ import { Store } from "@/lib/store";
 import {
   PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
   COR_PRESETS, FONT_OPTIONS, labelTipoEvento,
-  tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma,
-  type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes,
+  tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma, tipoEventoUsaSessoes,
+  type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes, type Sessao,
 } from "@/lib/types";
 import { useStoreVersion } from "@/hooks/useStore";
 import { QRCodeSVG } from "qrcode.react";
@@ -15,7 +15,7 @@ import {
   Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
   PartyPopper, Phone, MapPin, Send, MessageCircle, Loader2,
-  Upload, Sparkles, Image as ImageIcon, X,
+  Upload, Sparkles, Image as ImageIcon, X, GraduationCap,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-type Tab = "resumo" | "evento" | "convidados" | "design" | "convites";
+type Tab = "resumo" | "evento" | "sessoes" | "convidados" | "design" | "convites";
 
 function Dashboard() {
   useStoreVersion();
@@ -88,14 +88,17 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
   const pago = reserva.status === "Pago";
   const isOuro = pkg.id === "ouro";
   const [tab, setTab] = useState<Tab>("resumo");
+  const usaSessoes = tipoEventoUsaSessoes(reserva.tipo_evento);
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; locked?: boolean; ouroOnly?: boolean }[] = [
+  type TabDef = { id: Tab; label: string; icon: React.ReactNode; locked?: boolean; ouroOnly?: boolean; show?: boolean };
+  const tabs: TabDef[] = ([
     { id: "resumo", label: "Resumo", icon: <Ticket className="h-4 w-4" /> },
     { id: "evento", label: "Detalhes do Evento", icon: <CalendarDays className="h-4 w-4" />, locked: !pago },
+    { id: "sessoes", label: "Sessões", icon: <GraduationCap className="h-4 w-4" />, locked: !pago, show: usaSessoes },
     { id: "convidados", label: "Convidados", icon: <Users className="h-4 w-4" />, locked: !pago },
     { id: "design", label: "Designer", icon: <Palette className="h-4 w-4" />, locked: !pago, ouroOnly: true },
     { id: "convites", label: "Convites", icon: <Mail className="h-4 w-4" />, locked: !pago, ouroOnly: true },
-  ];
+  ] satisfies TabDef[]).filter((t) => t.show !== false);
 
   return (
     <div className="mt-8">
@@ -125,11 +128,170 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
       <div className="mt-6">
         {tab === "resumo" && <ResumoTab reserva={reserva} />}
         {tab === "evento" && pago && <EventoTab reserva={reserva} />}
+        {tab === "sessoes" && pago && <SessoesTab reserva={reserva} />}
         {tab === "convidados" && pago && <ConvidadosTab reserva={reserva} />}
         {tab === "design" && pago && isOuro && <DesignTab reserva={reserva} />}
         {tab === "convites" && pago && isOuro && <ConvitesTab reserva={reserva} />}
       </div>
     </div>
+  );
+}
+
+/* ---------------- SESSÕES (cursos/formações) ---------------- */
+function SessoesTab({ reserva }: { reserva: Reserva }) {
+  useStoreVersion();
+  const sessoes = Store.sessoesDaReserva(reserva.id);
+  const convidados = Store.convidadosDaReserva(reserva.id);
+  const [titulo, setTitulo] = useState("");
+  const [data, setData] = useState(reserva.data_evento);
+  const [hi, setHi] = useState("");
+  const [hf, setHf] = useState("");
+  const [criando, setCriando] = useState(false);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!titulo.trim() || !data) return;
+    setCriando(true);
+    try {
+      await Store.criarSessao({
+        reserva_id: reserva.id,
+        titulo: titulo.trim(),
+        data,
+        hora_inicio: hi || null,
+        hora_fim: hf || null,
+        ordem: sessoes.length,
+      });
+      setTitulo(""); setHi(""); setHf("");
+      toast.success("Sessão criada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha");
+    } finally {
+      setCriando(false);
+    }
+  }
+
+  function gerarSemanais(qtd: number) {
+    const base = new Date(reserva.data_evento);
+    for (let i = 0; i < qtd; i++) {
+      const d = new Date(base.getTime() + i * 7 * 86400000);
+      Store.criarSessao({
+        reserva_id: reserva.id,
+        titulo: `Sessão ${sessoes.length + i + 1}`,
+        data: format(d, "yyyy-MM-dd"),
+        hora_inicio: reserva.hora_inicio ?? null,
+        hora_fim: reserva.hora_fim ?? null,
+        ordem: sessoes.length + i,
+      });
+    }
+    toast.success(`${qtd} sessões criadas`);
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="glass rounded-2xl p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-accent" />
+              <h2 className="font-display text-2xl text-navy">Sessões / Aulas</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Cada participante usa o mesmo QR Code para marcar presença em todas as sessões.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => gerarSemanais(4)} className="rounded-xl border border-border bg-white/70 px-3 py-2 text-xs">+4 semanais</button>
+            <button onClick={() => gerarSemanais(8)} className="rounded-xl border border-border bg-white/70 px-3 py-2 text-xs">+8 semanais</button>
+          </div>
+        </div>
+
+        <form onSubmit={add} className="mt-5 grid gap-2 md:grid-cols-[1.4fr_1fr_0.6fr_0.6fr_auto]">
+          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título (Ex: Módulo 1)"
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)}
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <input type="time" value={hi} onChange={(e) => setHi(e.target.value)} placeholder="Início"
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <input type="time" value={hf} onChange={(e) => setHf(e.target.value)} placeholder="Fim"
+            className="glass-input rounded-xl px-3 py-2 text-sm outline-none" />
+          <button disabled={criando}
+            className="btn-navy inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
+            <Plus className="h-4 w-4" /> Adicionar
+          </button>
+        </form>
+      </div>
+
+      {sessoes.length > 0 && (
+        <div className="glass rounded-2xl p-6">
+          <h3 className="mb-3 font-display text-lg text-navy">Pauta de presenças</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                  <th className="py-2 pr-3">Sessão</th>
+                  <th className="py-2 pr-3">Data</th>
+                  <th className="py-2 pr-3">Presenças</th>
+                  <th className="py-2 pr-3">%</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessoes.map((s) => <SessaoRow key={s.id} s={s} total={convidados.length} />)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {convidados.length > 0 && sessoes.length > 0 && (
+        <div className="glass rounded-2xl p-6">
+          <h3 className="mb-3 font-display text-lg text-navy">Assiduidade por participante</h3>
+          <ul className="divide-y divide-white/40 text-sm">
+            {convidados.map((c) => {
+              const presencas = Store.presencasDoConvidado(c.id).filter((p) => sessoes.some((s) => s.id === p.sessao_id));
+              const pct = sessoes.length === 0 ? 0 : Math.round((presencas.length / sessoes.length) * 100);
+              const bom = pct >= 75;
+              return (
+                <li key={c.id} className="flex items-center justify-between py-2">
+                  <span className="font-medium text-navy">{c.nome_convidado}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{presencas.length}/{sessoes.length}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${bom ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
+                      {pct}%
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SessaoRow({ s, total }: { s: Sessao; total: number }) {
+  const presencas = Store.presencasDaSessao(s.id);
+  const pct = total === 0 ? 0 : Math.round((presencas.length / total) * 100);
+  return (
+    <tr className="border-b border-white/30">
+      <td className="py-2 pr-3 font-medium text-navy">{s.titulo}</td>
+      <td className="py-2 pr-3 text-xs">
+        {format(new Date(s.data), "EEE, d MMM", { locale: pt })}
+        {s.hora_inicio ? ` · ${s.hora_inicio}` : ""}
+      </td>
+      <td className="py-2 pr-3">{presencas.length} / {total}</td>
+      <td className="py-2 pr-3">
+        <span className={`rounded-full px-2 py-0.5 text-xs ${pct >= 75 ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>{pct}%</span>
+      </td>
+      <td className="py-2 text-right">
+        <button onClick={() => {
+          if (confirm(`Remover sessão "${s.titulo}"?`)) Store.removerSessao(s.id);
+        }} className="p-1 text-muted-foreground hover:text-destructive">
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </td>
+    </tr>
   );
 }
 

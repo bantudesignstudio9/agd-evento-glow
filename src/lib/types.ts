@@ -61,7 +61,10 @@ export interface Reserva {
   design_convite?: DesignConvite;
   local_evento?: LocalEvento;
   max_convidados?: number;
+  espaco_id?: string | null;
 }
+
+export type RsvpStatus = "pendente" | "confirmado" | "recusado";
 
 export interface ConvidadoDetalhes {
   mesa?: string;
@@ -82,6 +85,39 @@ export interface Convidado {
   sms_enviado_em?: string;
   whatsapp_enviado_em?: string;
   detalhes?: ConvidadoDetalhes;
+  rsvp_status?: RsvpStatus;
+  rsvp_acompanhantes?: number;
+  rsvp_em?: string;
+  lembrete_enviado_em?: string;
+}
+
+export interface Espaco {
+  id: string;
+  nome: string;
+  endereco: string;
+  capacidade: number;
+  lat?: number | null;
+  lng?: number | null;
+  ativo: boolean;
+  criado_em: string;
+}
+
+export interface Sessao {
+  id: string;
+  reserva_id: string;
+  titulo: string;
+  data: string;
+  hora_inicio?: string | null;
+  hora_fim?: string | null;
+  ordem: number;
+  criado_em: string;
+}
+
+export interface Presenca {
+  id: string;
+  sessao_id: string;
+  convidado_id: string;
+  marcado_em: string;
 }
 
 export const TIPOS_EVENTO: { value: string; label: string; categoria: string }[] = [
@@ -133,6 +169,9 @@ export function tipoEventoUsaPoltrona(tipo: string): boolean {
 }
 export function tipoEventoUsaTurma(tipo: string): boolean {
   return ["curso", "treinamento", "team_building", "workshop"].includes(tipo);
+}
+export function tipoEventoUsaSessoes(tipo: string): boolean {
+  return ["curso", "treinamento", "team_building", "workshop", "seminario", "palestra", "convencao"].includes(tipo);
 }
 
 export const CAPACIDADE_ESPACO = 150;

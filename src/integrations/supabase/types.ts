@@ -18,9 +18,13 @@ export type Database = {
         Row: {
           detalhes: Json | null
           id: string
+          lembrete_enviado_em: string | null
           nome_convidado: string
           qr_code_hash: string
           reserva_id: string
+          rsvp_acompanhantes: number
+          rsvp_em: string | null
+          rsvp_status: string
           sms_enviado_em: string | null
           status_checkin: boolean
           telefone: string | null
@@ -29,9 +33,13 @@ export type Database = {
         Insert: {
           detalhes?: Json | null
           id?: string
+          lembrete_enviado_em?: string | null
           nome_convidado: string
           qr_code_hash: string
           reserva_id: string
+          rsvp_acompanhantes?: number
+          rsvp_em?: string | null
+          rsvp_status?: string
           sms_enviado_em?: string | null
           status_checkin?: boolean
           telefone?: string | null
@@ -40,9 +48,13 @@ export type Database = {
         Update: {
           detalhes?: Json | null
           id?: string
+          lembrete_enviado_em?: string | null
           nome_convidado?: string
           qr_code_hash?: string
           reserva_id?: string
+          rsvp_acompanhantes?: number
+          rsvp_em?: string | null
+          rsvp_status?: string
           sms_enviado_em?: string | null
           status_checkin?: boolean
           telefone?: string | null
@@ -58,6 +70,75 @@ export type Database = {
           },
         ]
       }
+      espacos: {
+        Row: {
+          ativo: boolean
+          capacidade: number
+          criado_em: string
+          endereco: string
+          id: string
+          lat: number | null
+          lng: number | null
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          capacidade?: number
+          criado_em?: string
+          endereco: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          capacidade?: number
+          criado_em?: string
+          endereco?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          nome?: string
+        }
+        Relationships: []
+      }
+      presencas: {
+        Row: {
+          convidado_id: string
+          id: string
+          marcado_em: string
+          sessao_id: string
+        }
+        Insert: {
+          convidado_id: string
+          id?: string
+          marcado_em?: string
+          sessao_id: string
+        }
+        Update: {
+          convidado_id?: string
+          id?: string
+          marcado_em?: string
+          sessao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presencas_convidado_id_fkey"
+            columns: ["convidado_id"]
+            isOneToOne: false
+            referencedRelation: "convidados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_sessao_id_fkey"
+            columns: ["sessao_id"]
+            isOneToOne: false
+            referencedRelation: "sessoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservas: {
         Row: {
           cliente_email: string
@@ -67,6 +148,7 @@ export type Database = {
           data_evento: string
           design_convite: Json | null
           entidade_pagamento: string
+          espaco_id: string | null
           evento_nome: string | null
           hora_fim: string | null
           hora_inicio: string | null
@@ -88,6 +170,7 @@ export type Database = {
           data_evento: string
           design_convite?: Json | null
           entidade_pagamento: string
+          espaco_id?: string | null
           evento_nome?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
@@ -109,6 +192,7 @@ export type Database = {
           data_evento?: string
           design_convite?: Json | null
           entidade_pagamento?: string
+          espaco_id?: string | null
           evento_nome?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
@@ -122,7 +206,56 @@ export type Database = {
           status?: string
           tipo_evento?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reservas_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessoes: {
+        Row: {
+          criado_em: string
+          data: string
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          ordem: number
+          reserva_id: string
+          titulo: string
+        }
+        Insert: {
+          criado_em?: string
+          data: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          ordem?: number
+          reserva_id: string
+          titulo?: string
+        }
+        Update: {
+          criado_em?: string
+          data?: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          ordem?: number
+          reserva_id?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessoes_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
