@@ -20,13 +20,22 @@ export const Route = createFileRoute("/")({
 type Step = 1 | 2 | 3 | 4;
 
 function Index() {
+  useStoreVersion();
+  useEffect(() => { initStore(); }, []);
   const [step, setStep] = useState<Step>(1);
   const [pacote, setPacote] = useState<PackageId | null>(null);
   const [data, setData] = useState<Date | null>(null);
   const [periodo, setPeriodo] = useState<Period | null>(null);
+  const espacosAtivos = Store.espacosAtivos();
+  const [espacoId, setEspacoId] = useState<string>("");
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "", tipo_evento_outro: "", max_convidados: "" });
   const [reservaCriada, setReservaCriada] = useState<Awaited<ReturnType<typeof Store.criarReserva>> | null>(null);
   const [criando, setCriando] = useState(false);
+
+  // Pré-selecciona o primeiro espaço se ainda nenhum
+  useEffect(() => {
+    if (!espacoId && espacosAtivos[0]) setEspacoId(espacosAtivos[0].id);
+  }, [espacoId, espacosAtivos]);
 
   const navigate = useNavigate();
 
@@ -50,6 +59,7 @@ function Index() {
         pacote_id: pacote,
         data_evento: format(data, "yyyy-MM-dd"),
         periodo,
+        espaco_id: espacoId || null,
         max_convidados: Number.isFinite(maxC) && maxC > 0 ? Math.min(maxC, CAPACIDADE_ESPACO) : undefined,
       });
       setReservaCriada(r);
