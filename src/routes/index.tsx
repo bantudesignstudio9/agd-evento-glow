@@ -235,10 +235,11 @@ function StepPacotes({ pacote, setPacote }: { pacote: PackageId | null; setPacot
 }
 
 function StepCalendario({
-  data, setData, periodo, setPeriodo,
+  data, setData, periodo, setPeriodo, espacoId,
 }: {
   data: Date | null; setData: (d: Date) => void;
   periodo: Period | null; setPeriodo: (p: Period | null) => void;
+  espacoId?: string | null;
 }) {
   const [cursor, setCursor] = useState(new Date());
   const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
@@ -246,12 +247,12 @@ function StepCalendario({
   const days = eachDayOfInterval({ start, end });
   const today = new Date();
 
-  const ocupados = useMemo(() => (data ? Store.periodosOcupados(format(data, "yyyy-MM-dd")) : []), [data]);
+  const ocupados = useMemo(() => (data ? Store.periodosOcupados(format(data, "yyyy-MM-dd"), espacoId ?? undefined) : []), [data, espacoId]);
   const manhaOcupada = ocupados.includes("manha");
   const tardeOcupada = ocupados.includes("tarde");
 
   function diaTotalmenteOcupado(d: Date) {
-    const ps = Store.periodosOcupados(format(d, "yyyy-MM-dd"));
+    const ps = Store.periodosOcupados(format(d, "yyyy-MM-dd"), espacoId ?? undefined);
     return ps.includes("manha") && ps.includes("tarde");
   }
 
