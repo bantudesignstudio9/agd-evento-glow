@@ -6,8 +6,8 @@ import { Store } from "@/lib/store";
 import {
   PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
   COR_PRESETS, FONT_OPTIONS, labelTipoEvento,
-  tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma,
-  type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes,
+  tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma, tipoEventoUsaSessoes,
+  type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes, type Sessao,
 } from "@/lib/types";
 import { useStoreVersion } from "@/hooks/useStore";
 import { QRCodeSVG } from "qrcode.react";
@@ -15,7 +15,7 @@ import {
   Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
   PartyPopper, Phone, MapPin, Send, MessageCircle, Loader2,
-  Upload, Sparkles, Image as ImageIcon, X,
+  Upload, Sparkles, Image as ImageIcon, X, GraduationCap,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
