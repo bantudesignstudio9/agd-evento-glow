@@ -56,6 +56,7 @@ function AdminLayout() {
   const items = [
     { to: "/admin", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" />, exact: true },
     { to: "/admin/reservas", label: "Reservas", icon: <ListChecks className="h-4 w-4" /> },
+    { to: "/admin/espacos", label: "Espaços", icon: <Building2 className="h-4 w-4" /> },
     { to: "/admin/checkin", label: "Check-in", icon: <ScanLine className="h-4 w-4" /> },
   ];
 
