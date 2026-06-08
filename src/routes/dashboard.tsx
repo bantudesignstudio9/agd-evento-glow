@@ -90,14 +90,15 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
   const [tab, setTab] = useState<Tab>("resumo");
   const usaSessoes = tipoEventoUsaSessoes(reserva.tipo_evento);
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; locked?: boolean; ouroOnly?: boolean; show?: boolean }[] = [
+  type TabDef = { id: Tab; label: string; icon: React.ReactNode; locked?: boolean; ouroOnly?: boolean; show?: boolean };
+  const tabs: TabDef[] = ([
     { id: "resumo", label: "Resumo", icon: <Ticket className="h-4 w-4" /> },
     { id: "evento", label: "Detalhes do Evento", icon: <CalendarDays className="h-4 w-4" />, locked: !pago },
     { id: "sessoes", label: "Sessões", icon: <GraduationCap className="h-4 w-4" />, locked: !pago, show: usaSessoes },
-    { id: "convidados", label: "Convidados", icon: <Users className="h-4 w-4" /> , locked: !pago },
+    { id: "convidados", label: "Convidados", icon: <Users className="h-4 w-4" />, locked: !pago },
     { id: "design", label: "Designer", icon: <Palette className="h-4 w-4" />, locked: !pago, ouroOnly: true },
     { id: "convites", label: "Convites", icon: <Mail className="h-4 w-4" />, locked: !pago, ouroOnly: true },
-  ].filter((t) => t.show !== false);
+  ] satisfies TabDef[]).filter((t) => t.show !== false);
 
   return (
     <div className="mt-8">
