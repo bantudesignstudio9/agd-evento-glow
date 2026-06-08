@@ -111,12 +111,31 @@ function Index() {
 
         {step === 1 && <StepPacotes pacote={pacote} setPacote={setPacote} />}
         {step === 2 && (
-          <StepCalendario
-            data={data}
-            setData={setData}
-            periodo={periodo}
-            setPeriodo={setPeriodo}
-          />
+          <div className="space-y-4">
+            {espacosAtivos.length > 1 && (
+              <div className="glass rounded-2xl p-4">
+                <label className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  <Building2 className="h-3 w-3" /> Espaço pretendido
+                </label>
+                <select
+                  value={espacoId}
+                  onChange={(e) => { setEspacoId(e.target.value); setData(null); setPeriodo(null); }}
+                  className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm outline-none"
+                >
+                  {espacosAtivos.map((e) => (
+                    <option key={e.id} value={e.id}>{e.nome} — cap. {e.capacidade} ({e.endereco.split(",")[0]})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <StepCalendario
+              data={data}
+              setData={setData}
+              periodo={periodo}
+              setPeriodo={setPeriodo}
+              espacoId={espacoId || null}
+            />
+          </div>
         )}
         {step === 3 && <StepDetalhes form={form} setForm={setForm} />}
         {step === 4 && reservaCriada && <StepCheckout reserva={reservaCriada} onIr={() => navigate({ to: "/dashboard", search: { ref: reservaCriada.referencia_pagamento } as any })} />}
