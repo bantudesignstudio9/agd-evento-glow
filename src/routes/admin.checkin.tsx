@@ -3,7 +3,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { CheckCircle2, ScanLine, XCircle, Camera, CameraOff, Ticket } from "lucide-react";
+import { tipoEventoUsaSessoes } from "@/lib/types";
+import { CheckCircle2, ScanLine, XCircle, Camera, CameraOff, Ticket, CalendarDays } from "lucide-react";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 
 export const Route = createFileRoute("/admin/checkin")({
   component: CheckinPage,
@@ -15,16 +18,31 @@ function CheckinPage() {
   useStoreVersion();
   const [eventoRef, setEventoRef] = useState("");
   const reservaAlvo = useMemo(() => (eventoRef.trim() ? Store.getReservaByRef(eventoRef) : undefined), [eventoRef]);
+  const usaSessoes = !!reservaAlvo && tipoEventoUsaSessoes(reservaAlvo.tipo_evento);
+  const sessoesReserva = useMemo(
+    () => (reservaAlvo ? Store.sessoesDaReserva(reservaAlvo.id) : []),
+    [reservaAlvo],
+  );
+
+  // Pré-seleciona sessão de hoje se existir
+  const hoje = format(new Date(), "yyyy-MM-dd");
+  const [sessaoId, setSessaoId] = useState<string>("");
+  useEffect(() => {
+    if (!usaSessoes) { setSessaoId(""); return; }
+    const hojeSessao = sessoesReserva.find((s) => s.data === hoje);
+    setSessaoId(hojeSessao?.id ?? sessoesReserva[0]?.id ?? "");
+  }, [reservaAlvo?.id, sessoesReserva.length, hoje, usaSessoes]);
+
+  const sessaoAtiva = sessoesReserva.find((s) => s.id === sessaoId);
+  const presencasSessao = sessaoAtiva ? Store.presencasDaSessao(sessaoAtiva.id) : [];
+
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [manualHash, setManualHash] = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScan = useRef<{ hash: string; at: number }>({ hash: "", at: 0 });
 
-  useEffect(() => {
-    return () => { stopScan(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => () => { stopScan(); }, []);
 
   async function startScan() {
     setScanning(true);
@@ -37,7 +55,7 @@ function CheckinPage() {
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (decoded) => handleDecoded(decoded),
-        () => {}
+        () => {},
       );
     } catch (e: any) {
       setScanning(false);
@@ -59,6 +77,7 @@ function CheckinPage() {
     if (lastScan.current.hash === hash && now - lastScan.current.at < 2500) return;
     lastScan.current = { hash, at: now };
     const cleanHash = hash.trim();
+
     if (reservaAlvo) {
       const c = Store.getConvidadoByHash(cleanHash);
       if (!c || c.reserva_id !== reservaAlvo.id) {
@@ -66,6 +85,19 @@ function CheckinPage() {
         return;
       }
     }
+
+    // Cursos/formações → marca presença na sessão activa
+    if (usaSessoes) {
+      if (!sessaoAtiva) {
+        setResult({ ok: false, msg: "Selecione a sessão actual", ts: now });
+        return;
+      }
+      const r = await Store.checkinSessao(cleanHash, sessaoAtiva.id);
+      setResult({ ok: r.ok, msg: r.msg, nome: r.convidado?.nome_convidado, ts: now });
+      return;
+    }
+
+    // Eventos normais → check-in único
     const r = await Store.checkin(cleanHash);
     setResult({ ok: r.ok, msg: r.msg, nome: r.convidado?.nome_convidado, ts: now });
   }
@@ -97,6 +129,39 @@ function CheckinPage() {
               : <span className="rounded-full bg-destructive/15 px-3 py-1 text-destructive">Referência inválida</span>)}
           </div>
         </div>
+
+        {usaSessoes && (
+          <div className="mt-4 border-t border-white/40 pt-4">
+            <label className="mb-1 flex items-center gap-1 text-[11px] uppercase tracking-widest text-muted-foreground">
+              <CalendarDays className="h-3 w-3" /> Sessão activa
+            </label>
+            {sessoesReserva.length === 0 ? (
+              <div className="rounded-xl bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                Este curso ainda não tem sessões. Peça ao cliente para criá-las no dashboard.
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={sessaoId}
+                  onChange={(e) => setSessaoId(e.target.value)}
+                  className="rounded-xl border border-border bg-white/80 px-3 py-2 text-sm outline-none"
+                >
+                  {sessoesReserva.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {format(new Date(s.data), "EEE, d MMM", { locale: pt })} · {s.titulo}
+                      {s.data === hoje ? " (hoje)" : ""}
+                    </option>
+                  ))}
+                </select>
+                {sessaoAtiva && (
+                  <span className="rounded-full bg-accent/15 px-3 py-1 text-xs text-navy">
+                    {presencasSessao.length} presença(s) marcada(s)
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
@@ -152,7 +217,7 @@ function CheckinPage() {
             <div className="text-center">
               {result.ok ? <CheckCircle2 className="mx-auto h-20 w-20" /> : <XCircle className="mx-auto h-20 w-20" />}
               <div className="mt-4 font-display text-3xl">
-                {result.ok ? "Entrada Autorizada" : "Inválido / Já Entrou"}
+                {result.ok ? (usaSessoes ? "Presença Marcada" : "Entrada Autorizada") : "Inválido / Já Marcado"}
               </div>
               {result.nome && <div className="mt-2 text-lg opacity-90">{result.nome}</div>}
               <div className="mt-1 text-xs opacity-80">{result.msg}</div>
@@ -160,6 +225,25 @@ function CheckinPage() {
           )}
         </div>
       </div>
+
+      {usaSessoes && sessaoAtiva && presencasSessao.length > 0 && (
+        <div className="glass-strong rounded-3xl p-6">
+          <h3 className="mb-3 font-display text-lg text-navy">Presenças desta sessão ({presencasSessao.length})</h3>
+          <ul className="divide-y divide-white/40 text-sm">
+            {presencasSessao.map((p) => {
+              const c = Store.convidados().find((x) => x.id === p.convidado_id);
+              return (
+                <li key={p.id} className="flex items-center justify-between py-2">
+                  <span>{c?.nome_convidado ?? "—"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(p.marcado_em), "HH:mm")}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
