@@ -36,7 +36,7 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-type Tab = "resumo" | "evento" | "convidados" | "design" | "convites";
+type Tab = "resumo" | "evento" | "sessoes" | "convidados" | "design" | "convites";
 
 function Dashboard() {
   useStoreVersion();
