@@ -3,13 +3,14 @@ import { z } from "zod";
 import { useEffect, useState } from "react";
 import { Store, initStore } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { DEFAULT_DESIGN, DEFAULT_LOCAL, PACKAGES } from "@/lib/types";
+import { DEFAULT_DESIGN, DEFAULT_LOCAL, PACKAGES, tipoEventoUsaSessoes, type RsvpStatus } from "@/lib/types";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
-import { CalendarDays, Clock, MapPin, PartyPopper, Download, Loader2 } from "lucide-react";
+import { CalendarDays, Clock, MapPin, PartyPopper, Download, Loader2, Check, X, Users } from "lucide-react";
 import { MapaEvento } from "@/components/MapaEvento";
 import { gerarConvitePDF } from "@/lib/invite";
+import { toast } from "sonner";
 
 const search = z.object({ c: z.string().optional() });
 
@@ -60,6 +61,7 @@ function ConvitePage() {
   const design = reserva.design_convite ?? DEFAULT_DESIGN;
   const local = reserva.local_evento ?? DEFAULT_LOCAL;
   const pkg = PACKAGES.find((p) => p.id === reserva.pacote_id);
+  const sessoes = tipoEventoUsaSessoes(reserva.tipo_evento) ? Store.sessoesDaReserva(reserva.id) : [];
 
   const light = isLight(design.bg);
   const txt = light ? "#171717" : "#ffffff";
@@ -142,6 +144,8 @@ function ConvitePage() {
 
 
         <div className="space-y-4">
+          <RsvpCard hash={convidado.qr_code_hash} status={convidado.rsvp_status ?? "pendente"} acompanhantes={convidado.rsvp_acompanhantes ?? 0} />
+
           <div className="glass-strong rounded-3xl p-6">
             <div className="flex items-center gap-2 text-navy">
               <PartyPopper className="h-5 w-5 text-accent" />
@@ -173,6 +177,31 @@ function ConvitePage() {
             </button>
           </div>
 
+          {sessoes.length > 0 && (
+            <div className="glass-strong rounded-3xl p-6">
+              <div className="flex items-center gap-2 text-navy">
+                <CalendarDays className="h-5 w-5 text-accent" />
+                <h2 className="font-display text-2xl">Sessões / aulas</h2>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                O mesmo QR Code é válido para todas as sessões — apresente em cada entrada.
+              </p>
+              <ul className="mt-3 divide-y divide-white/40 text-sm">
+                {sessoes.map((s, i) => (
+                  <li key={s.id} className="flex items-center justify-between py-2">
+                    <div>
+                      <div className="font-medium text-navy">{i + 1}. {s.titulo}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(s.data), "EEE, d MMM yyyy", { locale: pt })}
+                        {s.hora_inicio ? ` · ${s.hora_inicio}${s.hora_fim ? `–${s.hora_fim}` : ""}` : ""}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {local.lat != null && local.lng != null && (
             <div className="glass-strong overflow-hidden rounded-3xl p-2">
               <MapaEvento lat={local.lat} lng={local.lng} label={local.endereco} height={300} />
@@ -189,6 +218,87 @@ function ConvitePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function RsvpCard({ hash, status, acompanhantes }: { hash: string; status: RsvpStatus; acompanhantes: number }) {
+  const [extra, setExtra] = useState(acompanhantes);
+  const [busy, setBusy] = useState(false);
+
+  async function responder(s: RsvpStatus) {
+    setBusy(true);
+    try {
+      await Store.rsvp(hash, s, s === "confirmado" ? extra : 0);
+      toast.success(s === "confirmado" ? "Presença confirmada!" : s === "recusado" ? "Resposta registada" : "Atualizado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isConfirmado = status === "confirmado";
+  const isRecusado = status === "recusado";
+
+  return (
+    <div className={`rounded-3xl p-6 shadow-lg ${
+      isConfirmado ? "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white" :
+      isRecusado ? "bg-gradient-to-br from-rose-500 to-rose-700 text-white" :
+      "glass-strong"
+    }`}>
+      <div className="flex items-center gap-2">
+        <Users className={`h-5 w-5 ${isConfirmado || isRecusado ? "" : "text-accent"}`} />
+        <h2 className={`font-display text-xl ${isConfirmado || isRecusado ? "" : "text-navy"}`}>Confirmação de presença</h2>
+      </div>
+
+      {status === "pendente" && (
+        <>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Por favor, confirme se irá comparecer. Isto ajuda a equipa a preparar o evento.
+          </p>
+          <label className="mt-3 flex items-center gap-2 text-sm text-foreground/80">
+            Acompanhantes (+1):
+            <input
+              type="number" min={0} max={5} value={extra}
+              onChange={(e) => setExtra(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-16 rounded-lg border border-border bg-white/80 px-2 py-1 text-sm outline-none"
+            />
+          </label>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={() => responder("confirmado")} disabled={busy}
+              className="btn-gold inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm disabled:opacity-50">
+              <Check className="h-4 w-4" /> Confirmo presença
+            </button>
+            <button onClick={() => responder("recusado")} disabled={busy}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-white/70 px-4 py-2 text-sm disabled:opacity-50">
+              <X className="h-4 w-4" /> Não poderei ir
+            </button>
+          </div>
+        </>
+      )}
+
+      {isConfirmado && (
+        <>
+          <p className="mt-2 text-sm opacity-90">
+            Confirmado! {acompanhantes > 0 && `Está reservado para si + ${acompanhantes} acompanhante(s).`}
+          </p>
+          <button onClick={() => responder("recusado")} disabled={busy}
+            className="mt-4 rounded-xl bg-white/20 px-3 py-1.5 text-xs hover:bg-white/30 disabled:opacity-50">
+            Alterar resposta
+          </button>
+        </>
+      )}
+
+      {isRecusado && (
+        <>
+          <p className="mt-2 text-sm opacity-90">A sua resposta foi registada. Sentiremos a sua falta!</p>
+          <button onClick={() => responder("confirmado")} disabled={busy}
+            className="mt-4 rounded-xl bg-white/20 px-3 py-1.5 text-xs hover:bg-white/30 disabled:opacity-50">
+            Mudei de ideias — quero ir
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 
