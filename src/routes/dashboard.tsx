@@ -96,6 +96,7 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
     { id: "evento", label: "Detalhes do Evento", icon: <CalendarDays className="h-4 w-4" />, locked: !pago },
     { id: "sessoes", label: "Sessões", icon: <GraduationCap className="h-4 w-4" />, locked: !pago, show: usaSessoes },
     { id: "convidados", label: "Convidados", icon: <Users className="h-4 w-4" />, locked: !pago },
+    { id: "servicos", label: "Serviços extra", icon: <ShoppingBag className="h-4 w-4" />, locked: !pago },
     { id: "design", label: "Designer", icon: <Palette className="h-4 w-4" />, locked: !pago, ouroOnly: true },
     { id: "convites", label: "Convites", icon: <Mail className="h-4 w-4" />, locked: !pago, ouroOnly: true },
   ] satisfies TabDef[]).filter((t) => t.show !== false);
