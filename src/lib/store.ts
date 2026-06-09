@@ -12,6 +12,10 @@ let _convidados: Convidado[] = [];
 let _espacos: Espaco[] = [];
 let _sessoes: Sessao[] = [];
 let _presencas: Presenca[] = [];
+let _fornecedores: Fornecedor[] = [];
+let _servicos: Servico[] = [];
+let _reservaServicos: ReservaServico[] = [];
+let _alteracoes: ReservaAlteracao[] = [];
 let _initialized = false;
 let _initPromise: Promise<void> | null = null;
 
