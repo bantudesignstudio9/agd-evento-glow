@@ -1,131 +1,86 @@
+# Plano — Auth Admin (estrutura), Marketplace+ e Controlo Operacional
 
-# Sugestões de evolução para a plataforma AGD Eventos
+Auth dos clientes fica como está. Foco: preparar fundação para login admin por código alfanumérico, ampliar marketplace, e dar ao admin um mapa-calendário com edição completa dos eventos.
 
-Com base no estado atual (reservas + planos Prata/Ouro, dashboard do cliente, convites com QR, check-in único, AI de templates, sincronização realtime), proponho a roadmap abaixo agrupada por tema. Inclui resposta direta à tua pergunta sobre **check-in recorrente para cursos/formações** (sim, é totalmente possível e está como item 3.1).
+## 1. Estrutura para Auth Admin por código de 6 dígitos (apenas staff/companhia)
 
----
+Objectivo: deixar tudo pronto para activar mais tarde sem refactor. Nenhum fluxo é ligado ao cliente final.
 
-## 1. Receita & Comercial
+Novas tabelas (criadas agora, ainda não usadas em runtime):
 
-**1.1 Novo plano "Bronze" + add-ons à la carte**
-Plano de entrada mais barato (só espaço + horários) e add-ons opcionais ao fechar reserva: som, projector, decoração extra, protocolo, fotógrafo, catering. Permite upsell mesmo em planos baixos.
+- `staff_users` — id, nome, email (único), telefone, papel (`admin` | `staff` | `companhia`), activo, criado_em.
+- `staff_auth_codes` — id, staff_user_id, code_hash (sha-256 do código 6-char A–Z/0–9, sem 0/O/1/I), expires_at (10 min), used_at, ip, user_agent, tentativas.
+- `staff_sessions` — id, staff_user_id, token_hash, expires_at (8h), revogado_em.
+- `staff_audit_log` — id, staff_user_id, accao, entidade, entidade_id, payload jsonb, criado_em.
 
-**1.2 Pagamento parcial / sinal de reserva**
-Permitir confirmar reserva com 30–50% do valor (sinal) e cobrar o restante até X dias antes do evento. Aumenta conversão (cliente não precisa do valor total à cabeça) e protege a AGD com política de cancelamento.
+Todas com RLS activa, **sem** policies para `anon`; acesso só via server functions com `supabaseAdmin`. Seed de 1 utilizador `admin` placeholder.
 
-**1.3 Cupões e códigos promocionais**
-Tabela `cupoes` (código, desconto %, validade, usos máx). Aplicável no checkout — útil para parcerias, primeiras reservas e campanhas sazonais.
+Server functions (esqueleto, ainda não plugadas ao UI atual):
 
-**1.4 Marketplace de fornecedores**
-Catálogo público de parceiros (DJs, fotógrafos, decoradores, catering) que o cliente pode contratar dentro da plataforma. AGD pode cobrar comissão.
+- `staff.requestCode({ email })` — gera código, guarda hash, envia por SMS (Twilio) ou email; rate-limit por IP/email.
+- `staff.verifyCode({ email, code })` — valida hash + expiração + tentativas; cria `staff_sessions`; devolve token httpOnly.
+- `staff.me()` / `staff.logout()` — usados depois pelo middleware `requireStaff`.
+- Middleware `requireStaff` (TanStack) para futuras rotas `/admin/*`.
 
----
+Página `/admin/login` é criada mas escondida atrás de feature flag (`VITE_STAFF_AUTH=off`). Login actual por palavra-passe (`agd2026`) permanece como hoje. Documenta-se em `.lovable/plan.md` como ligar quando a AGD decidir.
 
-## 2. Operação Multi-Espaços & Multi-Serviços
+## 2. Marketplace — mais serviços
 
-**2.1 Múltiplos espaços/recintos**
-Nova tabela `espacos` (nome, endereço, capacidade, horários, preços). Cada reserva passa a referenciar um `espaco_id`. Calendário de disponibilidade calcula por espaço. Painel admin filtra por espaço.
+Expande o catálogo já previsto (`servicos` + `fornecedores`). Migração cria:
 
-**2.2 Gestão de equipa / staff**
-Tabela `staff_users` com perfis: super-admin, gerente de espaço, operador de check-in, financeiro. Cada um vê apenas o que lhe compete. Usar `user_roles` + `has_role()` conforme convenção segura.
+- `fornecedores` (id, nome, contacto, telefone, email, categoria, activo, notas).
+- `servicos` (id, fornecedor_id, categoria, nome, descricao, preco_base, unidade, imagem_url, activo).
+- `reserva_servicos` (id, reserva_id, servico_id, quantidade, preco_unit, subtotal, estado).
 
-**2.3 Catálogo de serviços integrados**
-Cliente seleciona serviços adicionais na reserva ou no dashboard; cada serviço tem fornecedor responsável (interno ou externo). Estado: solicitado → aceite → entregue.
+Categorias seedadas: **Catering, Bar/Bebidas, Decoração & Floral, Bolos & Doces, Fotografia, Vídeo & Drone, DJ/Som, Banda ao Vivo, Iluminação cénica, Mestre de Cerimónias, Segurança, Protocolo, Transporte/Shuttle, Babysitting, Tradução, Cabine Fotográfica, Fogo de artifício, Convites impressos, Lembranças, Limpeza pós-evento**.
 
-**2.4 Calendário operacional unificado**
-Vista semanal/mensal estilo "kanban" para o staff: eventos do dia, espaços ocupados, tarefas pendentes (decorar, montar som, limpar). Drag & drop entre estados.
+UI:
 
----
+- `/admin/marketplace` — CRUD de fornecedores e serviços (staff).
+- No `/dashboard` do cliente, aba **"Serviços extra"**: cliente adiciona à reserva, vê subtotal e total, estado por item (pendente/confirmado/pago).
+- Admin vê pedidos em `/admin/reservas/:id` e pode aceitar/recusar/ajustar preço.
 
-## 3. Experiência (Cliente final & Convidados)
+## 3. Mapa-calendário operacional do admin
 
-**3.1 Check-in recorrente para cursos/formações — SIM, fazível ✓**
-Resposta directa à tua pergunta. Modelo proposto:
+Nova rota `/admin/agenda` com:
 
-```text
-sessoes (id, reserva_id, data, hora_inicio, titulo, obrigatoria)
-presencas (id, convidado_id, sessao_id, marcado_em, marcado_por)
-```
+- Vista **Mês / Semana / Dia** (FullCalendar — `@fullcalendar/react`, já compatível Vite).
+- Filtros: espaço, tipo de evento, estado, período (manhã/tarde/noite).
+- Cada bloco mostra: nome do evento, cliente, espaço, período, % ocupação.
+- Cores por estado (Pendente/Pago/Cancelado) e padrão por período.
+- Click → drawer lateral com detalhes + botão "Editar evento".
+- Drag para mover data/período (com confirmação e registo em `staff_audit_log`).
+- Indicador de conflito quando dois eventos colidem no mesmo espaço+período.
 
-- Ao criar reserva do tipo `curso`/`treinamento`/`seminario`, o cliente define no dashboard quantas sessões/datas tem o curso (ex: 10 aulas, 5 módulos).
-- O **mesmo QR code do participante** funciona para todas as sessões — o sistema sabe qual sessão está activa pelo dia/hora actual (ou selecionável pelo operador).
-- Página `/admin/checkin` ganha selector "Sessão de hoje" + relatório de assiduidade (% presença por aluno, faltas consecutivas, certificado automático se ≥ 75%).
-- Exportação CSV de pauta de presenças por sessão e geral.
+Dashboard admin ganha widget "Próximos 7 dias" com mini-calendário.
 
-**3.2 Lembretes automáticos (cron + WhatsApp/SMS)**
-Job diário via `pg_cron` → `/api/public/hooks/lembretes`:
-- 7 dias antes: lembrete ao cliente para finalizar lista de convidados.
-- 2 dias antes: lembrete aos convidados (já tens infra Twilio).
-- 1h após o evento: pedido de feedback / avaliação.
+## 4. Edição de eventos pelo admin (a pedido do cliente)
 
-**3.3 RSVP dos convidados**
-Página do convite com botão "Confirmo presença / Não poderei ir / +1 acompanhante". Cliente vê na hora quem confirmou. Reduz no-shows.
+Hoje só o cliente edita pelo dashboard. Adiciona-se ao admin:
 
-**3.4 Galeria pós-evento**
-Bucket `event-photos` por reserva. Convidados acedem com o mesmo link/QR e descarregam fotos. Pode ser add-on pago.
+- `/admin/reservas/:id/editar` — mesmo formulário do cliente, com todos os campos editáveis: data, período, espaço, tipo, horários, local, design do convite, max convidados, detalhes por convidado, sessões (para cursos), serviços contratados.
+- Validação de conflitos (espaço + data + período) antes de guardar.
+- Campo **"Motivo da alteração"** obrigatório → grava em `staff_audit_log` + cria entrada `reserva_alteracoes` (data, campo, valor_antigo, valor_novo, motivo, staff_id).
+- Aba **"Histórico"** na ficha da reserva mostra todas as alterações.
+- Botão **"Notificar cliente"** dispara SMS/email automático com o resumo das mudanças (template pronto, opcional por checkbox).
+- Política de janela: alterações a <48h do evento marcam reserva com flag `alteracao_urgente` e destacam a vermelho no dashboard.
 
-**3.5 Avaliações públicas e prova social**
-Após evento → email com link de avaliação (1–5★ + comentário). Avaliações aprovadas aparecem na landing page. Aumenta conversão de novos visitantes.
+## Detalhes técnicos
 
----
+- Migrations Supabase: `staff_*`, `fornecedores`, `servicos`, `reserva_servicos`, `reserva_alteracoes`. Todas com `GRANT` explícito (service_role; authenticated quando aplicável) e RLS.
+- Server functions em `src/lib/staff.functions.ts`, `src/lib/marketplace.functions.ts`, `src/lib/reserva-admin.functions.ts` (usam `supabaseAdmin` por enquanto, dado que admin actual é por palavra-passe partilhada).
+- FullCalendar instalado via `bun add @fullcalendar/react @fullcalendar/daygrid @fullcalendar/timegrid @fullcalendar/interaction`.
+- Store (`src/lib/store.ts`) ganha helpers `listarServicos`, `adicionarServicoReserva`, `editarReservaAdmin`, `listarAlteracoes`.
+- Tipos novos em `src/lib/types.ts`: `StaffUser`, `Fornecedor`, `Servico`, `ReservaServico`, `ReservaAlteracao`.
+- Erro de runtime React #419 (hidratação) é investigado e corrigido em paralelo se reaparecer após estas mudanças.
 
-## 4. Inteligência & Automação (Lovable AI)
+## Ordem de execução
 
-**4.1 Assistente IA no dashboard do cliente**
-Chat lateral que responde dúvidas ("a que horas devo chegar?", "posso mudar a data?"), sugere mensagens de boas-vindas, gera textos de convite no tom desejado (formal/descontraído/religioso), sugere disposição de mesas.
+1. Migrations (staff_*, marketplace, alteracoes) — 1 migração agrupada.
+2. Server fns + tipos + store helpers.
+3. Marketplace UI (admin + cliente).
+4. `/admin/agenda` (FullCalendar).
+5. Edição admin + histórico + notificação.
+6. Esqueleto `/admin/login` por código (feature-flag off).
 
-**4.2 Gerador de layout de mesas**
-Cliente diz "120 convidados, 8 mesas redondas + 2 VIP" → IA propõe distribuição respeitando famílias/grupos. Editor visual drag-and-drop por cima.
-
-**4.3 Sugestão automática de capacidade & preço**
-Ao escolher tipo de evento + número de convidados, IA sugere o melhor pacote e add-ons recomendados.
-
----
-
-## 5. Confiança, Segurança & Conformidade
-
-**5.1 Autenticação real (Lovable Cloud Auth)**
-Hoje admin usa palavra-passe partilhada `agd2026` e cliente usa apenas a referência. Migrar para:
-- Cliente: login email/Google + recuperação por OTP SMS (Twilio já configurado).
-- Admin/staff: email/password + roles (`super_admin`, `gerente`, `checkin`).
-- RLS por `user_id` em vez de políticas `Public ... using:true` (hoje qualquer pessoa com a anon key pode ler/editar tudo).
-
-**5.2 Auditoria**
-Tabela `audit_log` (quem fez o quê e quando) para mudanças sensíveis: alteração de status de pagamento, edição de reserva, check-ins manuais.
-
-**5.3 Política de cancelamento codificada**
-Regras claras (>30 dias = 100% devolvido, 15–30 = 50%, <15 = 0%) aplicadas automaticamente.
-
----
-
-## 6. Analytics & Negócio
-
-**6.1 Dashboard admin com KPIs**
-Receita do mês, eventos confirmados vs pendentes, taxa de conversão (reservas criadas → pagas), pacote mais vendido, ocupação por espaço, no-show rate.
-
-**6.2 Relatórios exportáveis**
-PDF/Excel de relatório financeiro mensal, lista de presenças, mapa de eventos do mês.
-
----
-
-## 7. Marketing & SEO
-
-**7.1 Páginas dedicadas por tipo de evento**
-`/casamentos`, `/formacoes`, `/eventos-corporativos` com SEO próprio (title, meta, OG image, JSON-LD). Hoje só existe landing genérica.
-
-**7.2 Blog / casos de sucesso**
-Conteúdo orgânico para captar tráfego ("Como organizar o casamento perfeito no Huambo").
-
-**7.3 Integração WhatsApp Business**
-Botão flutuante de contacto directo + respostas rápidas automáticas.
-
----
-
-## Próximo passo sugerido
-
-Quando consultares a AGD, recolhe respostas a:
-1. Quais destes blocos têm prioridade real? (Sugiro começar por **5.1 Auth real** + **3.1 Check-in recorrente** + **2.1 Múltiplos espaços** — são fundações para tudo o resto.)
-2. Há já fornecedores parceiros para o marketplace (item 1.4 / 2.3)?
-3. Existe política de cancelamento e tabela de preços de add-ons para codificar?
-
-Diz-me por onde queres avançar e eu detalho um plano de implementação focado.
+Confirma e avanço para build.

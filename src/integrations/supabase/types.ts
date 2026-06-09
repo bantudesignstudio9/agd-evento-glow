@@ -103,6 +103,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fornecedores: {
+        Row: {
+          activo: boolean
+          categoria: string
+          contacto: string | null
+          criado_em: string
+          email: string | null
+          id: string
+          nome: string
+          notas: string | null
+          telefone: string | null
+        }
+        Insert: {
+          activo?: boolean
+          categoria: string
+          contacto?: string | null
+          criado_em?: string
+          email?: string | null
+          id?: string
+          nome: string
+          notas?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          activo?: boolean
+          categoria?: string
+          contacto?: string | null
+          criado_em?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          notas?: string | null
+          telefone?: string | null
+        }
+        Relationships: []
+      }
       presencas: {
         Row: {
           convidado_id: string
@@ -139,8 +175,117 @@ export type Database = {
           },
         ]
       }
+      reserva_alteracoes: {
+        Row: {
+          campo: string
+          criado_em: string
+          id: string
+          motivo: string | null
+          notificado_cliente: boolean
+          reserva_id: string
+          staff_nome: string | null
+          staff_user_id: string | null
+          urgente: boolean
+          valor_antigo: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          campo: string
+          criado_em?: string
+          id?: string
+          motivo?: string | null
+          notificado_cliente?: boolean
+          reserva_id: string
+          staff_nome?: string | null
+          staff_user_id?: string | null
+          urgente?: boolean
+          valor_antigo?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          campo?: string
+          criado_em?: string
+          id?: string
+          motivo?: string | null
+          notificado_cliente?: boolean
+          reserva_id?: string
+          staff_nome?: string | null
+          staff_user_id?: string | null
+          urgente?: boolean
+          valor_antigo?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserva_alteracoes_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserva_alteracoes_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reserva_servicos: {
+        Row: {
+          criado_em: string
+          estado: string
+          id: string
+          notas: string | null
+          preco_unit: number
+          quantidade: number
+          reserva_id: string
+          servico_id: string
+          subtotal: number
+        }
+        Insert: {
+          criado_em?: string
+          estado?: string
+          id?: string
+          notas?: string | null
+          preco_unit?: number
+          quantidade?: number
+          reserva_id: string
+          servico_id: string
+          subtotal?: number
+        }
+        Update: {
+          criado_em?: string
+          estado?: string
+          id?: string
+          notas?: string | null
+          preco_unit?: number
+          quantidade?: number
+          reserva_id?: string
+          servico_id?: string
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserva_servicos_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserva_servicos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservas: {
         Row: {
+          alteracao_urgente: boolean
           cliente_email: string
           cliente_nome: string
           cliente_telefone: string
@@ -163,6 +308,7 @@ export type Database = {
           tipo_evento: string
         }
         Insert: {
+          alteracao_urgente?: boolean
           cliente_email: string
           cliente_nome: string
           cliente_telefone: string
@@ -185,6 +331,7 @@ export type Database = {
           tipo_evento: string
         }
         Update: {
+          alteracao_urgente?: boolean
           cliente_email?: string
           cliente_nome?: string
           cliente_telefone?: string
@@ -212,6 +359,53 @@ export type Database = {
             columns: ["espaco_id"]
             isOneToOne: false
             referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servicos: {
+        Row: {
+          activo: boolean
+          categoria: string
+          criado_em: string
+          descricao: string | null
+          fornecedor_id: string | null
+          id: string
+          imagem_url: string | null
+          nome: string
+          preco_base: number
+          unidade: string
+        }
+        Insert: {
+          activo?: boolean
+          categoria: string
+          criado_em?: string
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          imagem_url?: string | null
+          nome: string
+          preco_base?: number
+          unidade?: string
+        }
+        Update: {
+          activo?: boolean
+          categoria?: string
+          criado_em?: string
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          imagem_url?: string | null
+          nome?: string
+          preco_base?: number
+          unidade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
             referencedColumns: ["id"]
           },
         ]
@@ -256,6 +450,153 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staff_audit_log: {
+        Row: {
+          accao: string
+          criado_em: string
+          entidade: string | null
+          entidade_id: string | null
+          id: string
+          payload: Json | null
+          staff_user_id: string | null
+        }
+        Insert: {
+          accao: string
+          criado_em?: string
+          entidade?: string | null
+          entidade_id?: string | null
+          id?: string
+          payload?: Json | null
+          staff_user_id?: string | null
+        }
+        Update: {
+          accao?: string
+          criado_em?: string
+          entidade?: string | null
+          entidade_id?: string | null
+          id?: string
+          payload?: Json | null
+          staff_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_audit_log_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_auth_codes: {
+        Row: {
+          code_hash: string
+          criado_em: string
+          expires_at: string
+          id: string
+          ip: string | null
+          staff_user_id: string
+          tentativas: number
+          used_at: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          code_hash: string
+          criado_em?: string
+          expires_at: string
+          id?: string
+          ip?: string | null
+          staff_user_id: string
+          tentativas?: number
+          used_at?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          code_hash?: string
+          criado_em?: string
+          expires_at?: string
+          id?: string
+          ip?: string | null
+          staff_user_id?: string
+          tentativas?: number
+          used_at?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_auth_codes_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_sessions: {
+        Row: {
+          criado_em: string
+          expires_at: string
+          id: string
+          revogado_em: string | null
+          staff_user_id: string
+          token_hash: string
+        }
+        Insert: {
+          criado_em?: string
+          expires_at: string
+          id?: string
+          revogado_em?: string | null
+          staff_user_id: string
+          token_hash: string
+        }
+        Update: {
+          criado_em?: string
+          expires_at?: string
+          id?: string
+          revogado_em?: string | null
+          staff_user_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_sessions_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_users: {
+        Row: {
+          activo: boolean
+          criado_em: string
+          email: string
+          id: string
+          nome: string
+          papel: string
+          telefone: string | null
+        }
+        Insert: {
+          activo?: boolean
+          criado_em?: string
+          email: string
+          id?: string
+          nome: string
+          papel?: string
+          telefone?: string | null
+        }
+        Update: {
+          activo?: boolean
+          criado_em?: string
+          email?: string
+          id?: string
+          nome?: string
+          papel?: string
+          telefone?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
