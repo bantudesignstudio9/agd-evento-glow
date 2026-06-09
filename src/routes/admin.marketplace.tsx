@@ -122,7 +122,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function ServicoModal({ s, onClose }: { s: Servico | null; onClose: () => void }) {
   const fornecedores = Store.fornecedores();
   const [form, setForm] = useState({
-    fornecedor_id: s?.fornecedor_id ?? fornecedores[0]?.id ?? null,
+    fornecedor_id: (s?.fornecedor_id ?? fornecedores[0]?.id ?? null) as string | null,
     categoria: s?.categoria ?? CATEGORIAS_MARKETPLACE[0],
     nome: s?.nome ?? "",
     descricao: s?.descricao ?? "",
