@@ -52,6 +52,10 @@ async function hydrate() {
   _espacos = (es ?? []).map(rowToEspaco);
   _sessoes = (ss ?? []).map(rowToSessao);
   _presencas = (ps ?? []).map(rowToPresenca);
+  _fornecedores = ((fs ?? []) as Record<string, unknown>[]).map(rowToFornecedor);
+  _servicos = ((svs ?? []) as Record<string, unknown>[]).map(rowToServico);
+  _reservaServicos = ((rsv ?? []) as Record<string, unknown>[]).map(rowToReservaServico);
+  _alteracoes = ((als ?? []) as Record<string, unknown>[]).map(rowToAlteracao);
   emit();
 }
 
