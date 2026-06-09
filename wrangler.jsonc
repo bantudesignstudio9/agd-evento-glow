@@ -3,5 +3,5 @@
   "name": "agd-evento-glow",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "dist/index.js",
+  "main": ".vinxi/build/server/index.mjs",
 }
