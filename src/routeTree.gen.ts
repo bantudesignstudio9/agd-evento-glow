@@ -17,6 +17,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminReservasRouteImport } from './routes/admin.reservas'
 import { Route as AdminEspacosRouteImport } from './routes/admin.espacos'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
+import { Route as AdminAgendaRouteImport } from './routes/admin.agenda'
 import { Route as ApiPublicHooksLembretesRouteImport } from './routes/api/public/hooks/lembretes'
 
 const DashboardRoute = DashboardRouteImport.update({
@@ -59,6 +60,11 @@ const AdminCheckinRoute = AdminCheckinRouteImport.update({
   path: '/checkin',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAgendaRoute = AdminAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiPublicHooksLembretesRoute = ApiPublicHooksLembretesRouteImport.update({
   id: '/api/public/hooks/lembretes',
   path: '/api/public/hooks/lembretes',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
+  '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/reservas': typeof AdminReservasRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
+  '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/reservas': typeof AdminReservasRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
+  '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/reservas': typeof AdminReservasRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/convite'
     | '/dashboard'
+    | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
     | '/admin/reservas'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/'
     | '/convite'
     | '/dashboard'
+    | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
     | '/admin/reservas'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/convite'
     | '/dashboard'
+    | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
     | '/admin/reservas'
@@ -199,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCheckinRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/agenda': {
+      id: '/admin/agenda'
+      path: '/agenda'
+      fullPath: '/admin/agenda'
+      preLoaderRoute: typeof AdminAgendaRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/public/hooks/lembretes': {
       id: '/api/public/hooks/lembretes'
       path: '/api/public/hooks/lembretes'
@@ -210,6 +229,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminAgendaRoute: typeof AdminAgendaRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminEspacosRoute: typeof AdminEspacosRoute
   AdminReservasRoute: typeof AdminReservasRoute
@@ -217,6 +237,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAgendaRoute: AdminAgendaRoute,
   AdminCheckinRoute: AdminCheckinRoute,
   AdminEspacosRoute: AdminEspacosRoute,
   AdminReservasRoute: AdminReservasRoute,
@@ -235,3 +256,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
