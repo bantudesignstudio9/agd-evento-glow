@@ -168,7 +168,7 @@ function ServicoModal({ s, onClose }: { s: Servico | null; onClose: () => void }
           <L label="Unidade"><input value={form.unidade} onChange={(e) => setForm({ ...form, unidade: e.target.value })} className="inp" placeholder="pessoa, evento, unidade" /></L>
         </div>
         <L label="Fornecedor">
-          <select value={form.fornecedor_id ?? ""} onChange={(e) => setForm({ ...form, fornecedor_id: e.target.value || null })} className="inp">
+          <select value={form.fornecedor_id ?? ""} onChange={(e) => setForm({ ...form, fornecedor_id: (e.target.value || null) as string | null })} className="inp">
             <option value="">— sem fornecedor —</option>
             {fornecedores.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
           </select>
