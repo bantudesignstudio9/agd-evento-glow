@@ -15,7 +15,7 @@ import {
   Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
   PartyPopper, Phone, MapPin, Send, MessageCircle, Loader2,
-  Upload, Sparkles, Image as ImageIcon, X, GraduationCap,
+  Upload, Sparkles, Image as ImageIcon, X, GraduationCap, ShoppingBag,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
