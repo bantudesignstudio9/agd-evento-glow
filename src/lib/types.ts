@@ -62,6 +62,7 @@ export interface Reserva {
   local_evento?: LocalEvento;
   max_convidados?: number;
   espaco_id?: string | null;
+  alteracao_urgente?: boolean;
 }
 
 export type RsvpStatus = "pendente" | "confirmado" | "recusado";
