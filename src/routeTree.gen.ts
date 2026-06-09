@@ -20,6 +20,7 @@ import { Route as AdminEspacosRouteImport } from './routes/admin.espacos'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 import { Route as AdminAgendaRouteImport } from './routes/admin.agenda'
 import { Route as ApiPublicHooksLembretesRouteImport } from './routes/api/public/hooks/lembretes'
+import { Route as AdminReservasIdEditarRouteImport } from './routes/admin.reservas.$id.editar'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -76,6 +77,11 @@ const ApiPublicHooksLembretesRoute = ApiPublicHooksLembretesRouteImport.update({
   path: '/api/public/hooks/lembretes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminReservasIdEditarRoute = AdminReservasIdEditarRouteImport.update({
+  id: '/$id/editar',
+  path: '/$id/editar',
+  getParentRoute: () => AdminReservasRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -86,8 +92,9 @@ export interface FileRoutesByFullPath {
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
-  '/admin/reservas': typeof AdminReservasRoute
+  '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin/': typeof AdminIndexRoute
+  '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
 }
 export interface FileRoutesByTo {
@@ -98,8 +105,9 @@ export interface FileRoutesByTo {
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
-  '/admin/reservas': typeof AdminReservasRoute
+  '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin': typeof AdminIndexRoute
+  '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
 }
 export interface FileRoutesById {
@@ -112,8 +120,9 @@ export interface FileRoutesById {
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
-  '/admin/reservas': typeof AdminReservasRoute
+  '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin/': typeof AdminIndexRoute
+  '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
 }
 export interface FileRouteTypes {
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/admin/marketplace'
     | '/admin/reservas'
     | '/admin/'
+    | '/admin/reservas/$id/editar'
     | '/api/public/hooks/lembretes'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/admin/marketplace'
     | '/admin/reservas'
     | '/admin'
+    | '/admin/reservas/$id/editar'
     | '/api/public/hooks/lembretes'
   id:
     | '__root__'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/admin/marketplace'
     | '/admin/reservas'
     | '/admin/'
+    | '/admin/reservas/$id/editar'
     | '/api/public/hooks/lembretes'
   fileRoutesById: FileRoutesById
 }
@@ -244,15 +256,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksLembretesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/reservas/$id/editar': {
+      id: '/admin/reservas/$id/editar'
+      path: '/$id/editar'
+      fullPath: '/admin/reservas/$id/editar'
+      preLoaderRoute: typeof AdminReservasIdEditarRouteImport
+      parentRoute: typeof AdminReservasRoute
+    }
   }
 }
+
+interface AdminReservasRouteChildren {
+  AdminReservasIdEditarRoute: typeof AdminReservasIdEditarRoute
+}
+
+const AdminReservasRouteChildren: AdminReservasRouteChildren = {
+  AdminReservasIdEditarRoute: AdminReservasIdEditarRoute,
+}
+
+const AdminReservasRouteWithChildren = AdminReservasRoute._addFileChildren(
+  AdminReservasRouteChildren,
+)
 
 interface AdminRouteChildren {
   AdminAgendaRoute: typeof AdminAgendaRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminEspacosRoute: typeof AdminEspacosRoute
   AdminMarketplaceRoute: typeof AdminMarketplaceRoute
-  AdminReservasRoute: typeof AdminReservasRoute
+  AdminReservasRoute: typeof AdminReservasRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -261,7 +292,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCheckinRoute: AdminCheckinRoute,
   AdminEspacosRoute: AdminEspacosRoute,
   AdminMarketplaceRoute: AdminMarketplaceRoute,
-  AdminReservasRoute: AdminReservasRoute,
+  AdminReservasRoute: AdminReservasRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -277,3 +308,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
