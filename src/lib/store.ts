@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
   Reserva, Convidado, Period, Status, Espaco, Sessao, Presenca, RsvpStatus,
+  Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
 } from "./types";
 
 const K_ADMIN = "agd_admin";
@@ -11,6 +12,10 @@ let _convidados: Convidado[] = [];
 let _espacos: Espaco[] = [];
 let _sessoes: Sessao[] = [];
 let _presencas: Presenca[] = [];
+let _fornecedores: Fornecedor[] = [];
+let _servicos: Servico[] = [];
+let _reservaServicos: ReservaServico[] = [];
+let _alteracoes: ReservaAlteracao[] = [];
 let _initialized = false;
 let _initPromise: Promise<void> | null = null;
 
@@ -25,20 +30,32 @@ function rowToConvidado(r: Record<string, unknown>): Convidado { return r as unk
 function rowToEspaco(r: Record<string, unknown>): Espaco { return r as unknown as Espaco; }
 function rowToSessao(r: Record<string, unknown>): Sessao { return r as unknown as Sessao; }
 function rowToPresenca(r: Record<string, unknown>): Presenca { return r as unknown as Presenca; }
+function rowToFornecedor(r: Record<string, unknown>): Fornecedor { return r as unknown as Fornecedor; }
+function rowToServico(r: Record<string, unknown>): Servico { return r as unknown as Servico; }
+function rowToReservaServico(r: Record<string, unknown>): ReservaServico { return r as unknown as ReservaServico; }
+function rowToAlteracao(r: Record<string, unknown>): ReservaAlteracao { return r as unknown as ReservaAlteracao; }
 
 async function hydrate() {
-  const [{ data: rs }, { data: cs }, { data: es }, { data: ss }, { data: ps }] = await Promise.all([
+  const [{ data: rs }, { data: cs }, { data: es }, { data: ss }, { data: ps }, { data: fs }, { data: svs }, { data: rsv }, { data: als }] = await Promise.all([
     supabase.from("reservas").select("*").order("criado_em", { ascending: false }),
     supabase.from("convidados").select("*"),
     supabase.from("espacos").select("*").order("nome"),
     supabase.from("sessoes").select("*").order("data"),
     supabase.from("presencas").select("*"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: unknown[] | null }> } } }).from("fornecedores").select("*").order("nome"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: unknown[] | null }> } } }).from("servicos").select("*").order("nome"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }).from("reserva_servicos").select("*"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null }> } } }).from("reserva_alteracoes").select("*").order("criado_em", { ascending: false }),
   ]);
   _reservas = (rs ?? []).map(rowToReserva);
   _convidados = (cs ?? []).map(rowToConvidado);
   _espacos = (es ?? []).map(rowToEspaco);
   _sessoes = (ss ?? []).map(rowToSessao);
   _presencas = (ps ?? []).map(rowToPresenca);
+  _fornecedores = ((fs ?? []) as Record<string, unknown>[]).map(rowToFornecedor);
+  _servicos = ((svs ?? []) as Record<string, unknown>[]).map(rowToServico);
+  _reservaServicos = ((rsv ?? []) as Record<string, unknown>[]).map(rowToReservaServico);
+  _alteracoes = ((als ?? []) as Record<string, unknown>[]).map(rowToAlteracao);
   emit();
 }
 
@@ -276,6 +293,112 @@ export const Store = {
     _presencas = _presencas.filter((p) => p.id !== id);
     emit();
     await supabase.from("presencas").delete().eq("id", id);
+  },
+
+  // MARKETPLACE
+  fornecedores: (): Fornecedor[] => _fornecedores,
+  servicos: (): Servico[] => _servicos,
+  servicosAtivos: (): Servico[] => _servicos.filter((s) => s.activo),
+  servicosPorCategoria: (cat: string) => _servicos.filter((s) => s.categoria === cat && s.activo),
+  reservaServicos: (): ReservaServico[] => _reservaServicos,
+  servicosDaReserva: (reserva_id: string) => _reservaServicos.filter((rs) => rs.reserva_id === reserva_id),
+
+  async criarFornecedor(input: Omit<Fornecedor, "id" | "criado_em">): Promise<Fornecedor> {
+    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: { message: string } | null }> } } } };
+    const { data, error } = await sb.from("fornecedores").insert(input).select().single();
+    if (error || !data) throw new Error(error?.message || "Falha");
+    const f = rowToFornecedor(data as Record<string, unknown>);
+    _fornecedores = [..._fornecedores, f]; emit(); return f;
+  },
+  async atualizarFornecedor(id: string, patch: Partial<Fornecedor>) {
+    _fornecedores = _fornecedores.map((f) => f.id === id ? { ...f, ...patch } : f); emit();
+    const sb = supabase as never as { from: (t: string) => { update: (v: unknown) => { eq: (k: string, v: string) => Promise<unknown> } } };
+    await sb.from("fornecedores").update(patch).eq("id", id);
+  },
+  async removerFornecedor(id: string) {
+    _fornecedores = _fornecedores.filter((f) => f.id !== id); emit();
+    const sb = supabase as never as { from: (t: string) => { delete: () => { eq: (k: string, v: string) => Promise<unknown> } } };
+    await sb.from("fornecedores").delete().eq("id", id);
+  },
+
+  async criarServico(input: Omit<Servico, "id" | "criado_em">): Promise<Servico> {
+    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: { message: string } | null }> } } } };
+    const { data, error } = await sb.from("servicos").insert(input).select().single();
+    if (error || !data) throw new Error(error?.message || "Falha");
+    const s = rowToServico(data as Record<string, unknown>);
+    _servicos = [..._servicos, s]; emit(); return s;
+  },
+  async atualizarServico(id: string, patch: Partial<Servico>) {
+    _servicos = _servicos.map((s) => s.id === id ? { ...s, ...patch } : s); emit();
+    const sb = supabase as never as { from: (t: string) => { update: (v: unknown) => { eq: (k: string, v: string) => Promise<unknown> } } };
+    await sb.from("servicos").update(patch).eq("id", id);
+  },
+  async removerServico(id: string) {
+    _servicos = _servicos.filter((s) => s.id !== id); emit();
+    const sb = supabase as never as { from: (t: string) => { delete: () => { eq: (k: string, v: string) => Promise<unknown> } } };
+    await sb.from("servicos").delete().eq("id", id);
+  },
+
+  async adicionarServicoReserva(reserva_id: string, servico_id: string, quantidade = 1): Promise<ReservaServico> {
+    const sv = _servicos.find((s) => s.id === servico_id);
+    if (!sv) throw new Error("Serviço não encontrado");
+    const subtotal = Number(sv.preco_base) * quantidade;
+    const payload = { reserva_id, servico_id, quantidade, preco_unit: sv.preco_base, subtotal, estado: "pendente" as ReservaServicoEstado };
+    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: { message: string } | null }> } } } };
+    const { data, error } = await sb.from("reserva_servicos").insert(payload).select().single();
+    if (error || !data) throw new Error(error?.message || "Falha");
+    const rs = rowToReservaServico(data as Record<string, unknown>);
+    _reservaServicos = [..._reservaServicos, rs]; emit(); return rs;
+  },
+  async atualizarServicoReserva(id: string, patch: Partial<ReservaServico>) {
+    _reservaServicos = _reservaServicos.map((rs) => rs.id === id ? { ...rs, ...patch } : rs); emit();
+    const sb = supabase as never as { from: (t: string) => { update: (v: unknown) => { eq: (k: string, v: string) => Promise<unknown> } } };
+    await sb.from("reserva_servicos").update(patch).eq("id", id);
+  },
+  async removerServicoReserva(id: string) {
+    _reservaServicos = _reservaServicos.filter((rs) => rs.id !== id); emit();
+    const sb = supabase as never as { from: (t: string) => { delete: () => { eq: (k: string, v: string) => Promise<unknown> } } };
+    await sb.from("reserva_servicos").delete().eq("id", id);
+  },
+
+  // HISTÓRICO DE ALTERAÇÕES
+  alteracoes: (): ReservaAlteracao[] => _alteracoes,
+  alteracoesDaReserva: (reserva_id: string) =>
+    _alteracoes.filter((a) => a.reserva_id === reserva_id)
+      .sort((a, b) => b.criado_em.localeCompare(a.criado_em)),
+
+  async editarReservaAdmin(
+    reserva_id: string,
+    patch: Partial<Reserva>,
+    motivo: string,
+    staff_nome = "Admin",
+  ) {
+    const original = _reservas.find((r) => r.id === reserva_id);
+    if (!original) throw new Error("Reserva não encontrada");
+
+    // Detecta urgência: alteração de data/período e evento dentro de 48h
+    const eventoEm = new Date(original.data_evento + "T12:00:00").getTime();
+    const horas = (eventoEm - Date.now()) / 36e5;
+    const mudaData = patch.data_evento && patch.data_evento !== original.data_evento;
+    const mudaPeriodo = patch.periodo && patch.periodo !== original.periodo;
+    const urgente = horas < 48 && (mudaData || mudaPeriodo);
+
+    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => Promise<{ error: { message: string } | null }> } };
+    const rows: Record<string, unknown>[] = [];
+    for (const [campo, valor_novo] of Object.entries(patch)) {
+      const valor_antigo = (original as unknown as Record<string, unknown>)[campo];
+      if (JSON.stringify(valor_antigo) === JSON.stringify(valor_novo)) continue;
+      rows.push({
+        reserva_id, staff_nome, campo, motivo,
+        valor_antigo: valor_antigo == null ? null : String(typeof valor_antigo === "object" ? JSON.stringify(valor_antigo) : valor_antigo),
+        valor_novo: valor_novo == null ? null : String(typeof valor_novo === "object" ? JSON.stringify(valor_novo) : valor_novo),
+        urgente,
+      });
+    }
+    if (rows.length > 0) {
+      await sb.from("reserva_alteracoes").insert(rows);
+    }
+    await Store.atualizarReserva(reserva_id, { ...patch, alteracao_urgente: urgente || original.alteracao_urgente });
   },
 
   // ADMIN AUTH (provisional)

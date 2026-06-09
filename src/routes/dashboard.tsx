@@ -15,7 +15,7 @@ import {
   Lock, Plus, Search, Ticket, Trash2, CalendarDays,
   Users, Palette, Mail, Save, Download, Link2, CheckCircle2, Clock,
   PartyPopper, Phone, MapPin, Send, MessageCircle, Loader2,
-  Upload, Sparkles, Image as ImageIcon, X, GraduationCap,
+  Upload, Sparkles, Image as ImageIcon, X, GraduationCap, ShoppingBag,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-type Tab = "resumo" | "evento" | "sessoes" | "convidados" | "design" | "convites";
+type Tab = "resumo" | "evento" | "sessoes" | "convidados" | "servicos" | "design" | "convites";
 
 function Dashboard() {
   useStoreVersion();
@@ -96,6 +96,7 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
     { id: "evento", label: "Detalhes do Evento", icon: <CalendarDays className="h-4 w-4" />, locked: !pago },
     { id: "sessoes", label: "Sessões", icon: <GraduationCap className="h-4 w-4" />, locked: !pago, show: usaSessoes },
     { id: "convidados", label: "Convidados", icon: <Users className="h-4 w-4" />, locked: !pago },
+    { id: "servicos", label: "Serviços extra", icon: <ShoppingBag className="h-4 w-4" />, locked: !pago },
     { id: "design", label: "Designer", icon: <Palette className="h-4 w-4" />, locked: !pago, ouroOnly: true },
     { id: "convites", label: "Convites", icon: <Mail className="h-4 w-4" />, locked: !pago, ouroOnly: true },
   ] satisfies TabDef[]).filter((t) => t.show !== false);
@@ -130,6 +131,7 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
         {tab === "evento" && pago && <EventoTab reserva={reserva} />}
         {tab === "sessoes" && pago && <SessoesTab reserva={reserva} />}
         {tab === "convidados" && pago && <ConvidadosTab reserva={reserva} />}
+        {tab === "servicos" && pago && <ServicosTab reserva={reserva} />}
         {tab === "design" && pago && isOuro && <DesignTab reserva={reserva} />}
         {tab === "convites" && pago && isOuro && <ConvitesTab reserva={reserva} />}
       </div>
@@ -137,7 +139,95 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
   );
 }
 
-/* ---------------- SESSÕES (cursos/formações) ---------------- */
+/* ---------------- SERVIÇOS EXTRA (marketplace) ---------------- */
+function ServicosTab({ reserva }: { reserva: Reserva }) {
+  useStoreVersion();
+  const servicos = Store.servicosAtivos();
+  const contratados = Store.servicosDaReserva(reserva.id);
+  const total = contratados.reduce((a, b) => a + Number(b.subtotal), 0);
+  const [catSel, setCatSel] = useState<string>("todas");
+  const cats = Array.from(new Set(servicos.map((s) => s.categoria))).sort();
+  const filtrados = catSel === "todas" ? servicos : servicos.filter((s) => s.categoria === catSel);
+
+  async function adicionar(servico_id: string) {
+    try { await Store.adicionarServicoReserva(reserva.id, servico_id, 1); toast.success("Adicionado"); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Falha"); }
+  }
+  async function remover(id: string) {
+    if (!confirm("Remover este serviço?")) return;
+    await Store.removerServicoReserva(id); toast.success("Removido");
+  }
+  async function alterarQtd(id: string, qtd: number, precoUnit: number) {
+    if (qtd < 1) return;
+    await Store.atualizarServicoReserva(id, { quantidade: qtd, subtotal: qtd * precoUnit });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-strong rounded-2xl p-5">
+        <h3 className="font-display text-lg text-navy">Os meus serviços contratados</h3>
+        {contratados.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Ainda não adicionou serviços extra.</p>
+        ) : (
+          <>
+            <ul className="mt-3 divide-y divide-border/60">
+              {contratados.map((rs) => {
+                const sv = servicos.find((s) => s.id === rs.servico_id);
+                return (
+                  <li key={rs.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                    <div className="flex-1">
+                      <div className="font-medium">{sv?.nome ?? "Serviço"}</div>
+                      <div className="text-xs text-muted-foreground">{sv?.categoria} · {formatKz(Number(rs.preco_unit))}/{sv?.unidade}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="number" min={1} value={rs.quantidade} onChange={(e) => alterarQtd(rs.id, Number(e.target.value), Number(rs.preco_unit))} className="w-16 rounded-lg border border-border bg-white px-2 py-1 text-sm" />
+                      <span className="w-24 text-right font-medium">{formatKz(Number(rs.subtotal))}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] ${rs.estado === "confirmado" ? "bg-success/15 text-success" : rs.estado === "recusado" ? "bg-destructive/15 text-destructive" : "bg-yellow-100 text-yellow-800"}`}>{rs.estado}</span>
+                      <button onClick={() => remover(rs.id)} className="rounded-md p-1 text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-3 flex justify-end border-t border-border pt-3">
+              <div className="text-right">
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">Total serviços extra</div>
+                <div className="font-display text-2xl text-navy">{formatKz(total)}</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="glass-strong rounded-2xl p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-display text-lg text-navy">Catálogo</h3>
+          <select value={catSel} onChange={(e) => setCatSel(e.target.value)} className="rounded-xl border border-border bg-white px-3 py-1.5 text-sm">
+            <option value="todas">Todas categorias</option>
+            {cats.map((c) => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filtrados.map((s) => (
+            <div key={s.id} className="rounded-2xl border border-border bg-white/70 p-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.categoria}</div>
+              <div className="font-medium text-navy">{s.nome}</div>
+              {s.descricao && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{s.descricao}</p>}
+              <div className="mt-2 flex items-end justify-between">
+                <div>
+                  <div className="font-display text-lg text-navy">{formatKz(Number(s.preco_base))}</div>
+                  <div className="text-[10px] text-muted-foreground">por {s.unidade}</div>
+                </div>
+                <button onClick={() => adicionar(s.id)} className="btn-gold inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs"><Plus className="h-3 w-3" /> Adicionar</button>
+              </div>
+            </div>
+          ))}
+          {filtrados.length === 0 && <p className="col-span-full p-6 text-center text-sm text-muted-foreground">Sem serviços nesta categoria.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
 function SessoesTab({ reserva }: { reserva: Reserva }) {
   useStoreVersion();
   const sessoes = Store.sessoesDaReserva(reserva.id);

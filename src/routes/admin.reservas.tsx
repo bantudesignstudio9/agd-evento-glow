@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
@@ -150,9 +150,14 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
             <button onClick={() => setEditing(false)} className="rounded-xl border border-border bg-white/70 px-3 py-2 text-sm">Cancelar</button>
           </div>
         ) : (
-          <button onClick={() => setEditing(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-3 py-2 text-sm">
-            <Pencil className="h-4 w-4" /> Editar dados
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setEditing(true)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-3 py-2 text-sm">
+              <Pencil className="h-4 w-4" /> Edição rápida
+            </button>
+            <Link to="/admin/reservas/$id/editar" params={{ id: r.id }} className="btn-navy inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm">
+              Edição completa
+            </Link>
+          </div>
         )}
 
         {r.status === "Pendente" && (
