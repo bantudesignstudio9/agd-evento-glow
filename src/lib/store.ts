@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
   Reserva, Convidado, Period, Status, Espaco, Sessao, Presenca, RsvpStatus,
+  Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
 } from "./types";
 
 const K_ADMIN = "agd_admin";
