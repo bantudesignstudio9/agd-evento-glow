@@ -69,7 +69,7 @@ function EditarReserva() {
       await Store.editarReservaAdmin(id, patch, motivo, "Admin");
       if (notificar) {
         // TODO: ligar a um serverFn de SMS/email quando definirmos o template
-        console.log("[admin-edit] notificar cliente:", r.cliente_telefone, motivo);
+        console.log("[admin-edit] notificar cliente:", r?.cliente_telefone, motivo);
       }
       toast.success("Reserva actualizada");
       navigate({ to: "/admin/reservas" });
