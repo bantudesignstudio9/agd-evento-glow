@@ -30,14 +30,22 @@ function rowToConvidado(r: Record<string, unknown>): Convidado { return r as unk
 function rowToEspaco(r: Record<string, unknown>): Espaco { return r as unknown as Espaco; }
 function rowToSessao(r: Record<string, unknown>): Sessao { return r as unknown as Sessao; }
 function rowToPresenca(r: Record<string, unknown>): Presenca { return r as unknown as Presenca; }
+function rowToFornecedor(r: Record<string, unknown>): Fornecedor { return r as unknown as Fornecedor; }
+function rowToServico(r: Record<string, unknown>): Servico { return r as unknown as Servico; }
+function rowToReservaServico(r: Record<string, unknown>): ReservaServico { return r as unknown as ReservaServico; }
+function rowToAlteracao(r: Record<string, unknown>): ReservaAlteracao { return r as unknown as ReservaAlteracao; }
 
 async function hydrate() {
-  const [{ data: rs }, { data: cs }, { data: es }, { data: ss }, { data: ps }] = await Promise.all([
+  const [{ data: rs }, { data: cs }, { data: es }, { data: ss }, { data: ps }, { data: fs }, { data: svs }, { data: rsv }, { data: als }] = await Promise.all([
     supabase.from("reservas").select("*").order("criado_em", { ascending: false }),
     supabase.from("convidados").select("*"),
     supabase.from("espacos").select("*").order("nome"),
     supabase.from("sessoes").select("*").order("data"),
     supabase.from("presencas").select("*"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: unknown[] | null }> } } }).from("fornecedores").select("*").order("nome"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: unknown[] | null }> } } }).from("servicos").select("*").order("nome"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }).from("reserva_servicos").select("*"),
+    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null }> } } }).from("reserva_alteracoes").select("*").order("criado_em", { ascending: false }),
   ]);
   _reservas = (rs ?? []).map(rowToReserva);
   _convidados = (cs ?? []).map(rowToConvidado);
