@@ -120,6 +120,66 @@ export interface Presenca {
   marcado_em: string;
 }
 
+export interface Fornecedor {
+  id: string;
+  nome: string;
+  contacto?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  categoria: string;
+  activo: boolean;
+  notas?: string | null;
+  criado_em: string;
+}
+
+export interface Servico {
+  id: string;
+  fornecedor_id?: string | null;
+  categoria: string;
+  nome: string;
+  descricao?: string | null;
+  preco_base: number;
+  unidade: string;
+  imagem_url?: string | null;
+  activo: boolean;
+  criado_em: string;
+}
+
+export type ReservaServicoEstado = "pendente" | "confirmado" | "recusado" | "pago" | "cancelado";
+
+export interface ReservaServico {
+  id: string;
+  reserva_id: string;
+  servico_id: string;
+  quantidade: number;
+  preco_unit: number;
+  subtotal: number;
+  estado: ReservaServicoEstado;
+  notas?: string | null;
+  criado_em: string;
+}
+
+export interface ReservaAlteracao {
+  id: string;
+  reserva_id: string;
+  staff_user_id?: string | null;
+  staff_nome?: string | null;
+  campo: string;
+  valor_antigo?: string | null;
+  valor_novo?: string | null;
+  motivo?: string | null;
+  urgente: boolean;
+  notificado_cliente: boolean;
+  criado_em: string;
+}
+
+export const CATEGORIAS_MARKETPLACE = [
+  "Catering","Bar/Bebidas","Decoração & Floral","Bolos & Doces","Fotografia",
+  "Vídeo & Drone","DJ/Som","Banda ao Vivo","Iluminação cénica","Mestre de Cerimónias",
+  "Segurança","Protocolo","Transporte/Shuttle","Babysitting","Tradução",
+  "Cabine Fotográfica","Fogo de artifício","Convites impressos","Lembranças","Limpeza pós-evento",
+] as const;
+
 export const TIPOS_EVENTO: { value: string; label: string; categoria: string }[] = [
   { value: "casamento", label: "Casamento", categoria: "Social" },
   { value: "noivado", label: "Noivado / Pedida", categoria: "Social" },
