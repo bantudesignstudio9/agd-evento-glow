@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminReservasRouteImport } from './routes/admin.reservas'
+import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
 import { Route as AdminEspacosRouteImport } from './routes/admin.espacos'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 import { Route as AdminAgendaRouteImport } from './routes/admin.agenda'
@@ -50,6 +51,11 @@ const AdminReservasRoute = AdminReservasRouteImport.update({
   path: '/reservas',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminEspacosRoute = AdminEspacosRouteImport.update({
   id: '/espacos',
   path: '/espacos',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
+  '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/reservas': typeof AdminReservasRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
+  '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/reservas': typeof AdminReservasRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
+  '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/reservas': typeof AdminReservasRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
+    | '/admin/marketplace'
     | '/admin/reservas'
     | '/admin/'
     | '/api/public/hooks/lembretes'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
+    | '/admin/marketplace'
     | '/admin/reservas'
     | '/admin'
     | '/api/public/hooks/lembretes'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
+    | '/admin/marketplace'
     | '/admin/reservas'
     | '/admin/'
     | '/api/public/hooks/lembretes'
@@ -197,6 +209,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReservasRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/marketplace': {
+      id: '/admin/marketplace'
+      path: '/marketplace'
+      fullPath: '/admin/marketplace'
+      preLoaderRoute: typeof AdminMarketplaceRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/espacos': {
       id: '/admin/espacos'
       path: '/espacos'
@@ -232,6 +251,7 @@ interface AdminRouteChildren {
   AdminAgendaRoute: typeof AdminAgendaRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminEspacosRoute: typeof AdminEspacosRoute
+  AdminMarketplaceRoute: typeof AdminMarketplaceRoute
   AdminReservasRoute: typeof AdminReservasRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -240,6 +260,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAgendaRoute: AdminAgendaRoute,
   AdminCheckinRoute: AdminCheckinRoute,
   AdminEspacosRoute: AdminEspacosRoute,
+  AdminMarketplaceRoute: AdminMarketplaceRoute,
   AdminReservasRoute: AdminReservasRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
