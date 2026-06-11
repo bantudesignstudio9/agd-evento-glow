@@ -3,10 +3,21 @@ import type {
   Reserva, Convidado, Period, Status, Espaco, Sessao, Presenca, RsvpStatus,
   Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
 } from "./types";
+import {
+  sfCriarReserva, sfAtualizarReserva, sfRemoverReserva,
+  sfAddConvidado, sfAtualizarConvidado, sfRemoverConvidado,
+  sfInserirPresenca, sfRemoverPresenca,
+  sfCriarEspaco, sfAtualizarEspaco, sfRemoverEspaco,
+  sfCriarSessao, sfAtualizarSessao, sfRemoverSessao,
+  sfListarFornecedores, sfCriarFornecedor, sfAtualizarFornecedor, sfRemoverFornecedor,
+  sfCriarServico, sfAtualizarServico, sfRemoverServico,
+  sfAdicionarReservaServico, sfAtualizarReservaServico, sfRemoverReservaServico,
+  sfListarAlteracoes, sfRegistarAlteracoes,
+} from "./data.functions";
 
 const K_ADMIN = "agd_admin";
 
-// In-memory caches (hydrated from Supabase + kept in sync via Realtime)
+// In-memory caches (hydrated from Supabase + kept in sync via Realtime para leituras públicas)
 let _reservas: Reserva[] = [];
 let _convidados: Convidado[] = [];
 let _espacos: Espaco[] = [];
@@ -36,26 +47,34 @@ function rowToReservaServico(r: Record<string, unknown>): ReservaServico { retur
 function rowToAlteracao(r: Record<string, unknown>): ReservaAlteracao { return r as unknown as ReservaAlteracao; }
 
 async function hydrate() {
-  const [{ data: rs }, { data: cs }, { data: es }, { data: ss }, { data: ps }, { data: fs }, { data: svs }, { data: rsv }, { data: als }] = await Promise.all([
+  // Leituras públicas via anon (RLS permite SELECT em reservas, convidados, espacos,
+  // sessoes, presencas, servicos, reserva_servicos — modelo anónimo por design)
+  const sbAny = supabase as never as { from: (t: string) => { select: (c: string) => { order?: (k: string, o?: { ascending: boolean }) => Promise<{ data: unknown[] | null }> } & Promise<{ data: unknown[] | null }> } };
+  const [
+    { data: rs }, { data: cs }, { data: es }, { data: ss }, { data: ps },
+    { data: svs }, { data: rsv },
+    fornecedoresRows, alteracoesRows,
+  ] = await Promise.all([
     supabase.from("reservas").select("*").order("criado_em", { ascending: false }),
     supabase.from("convidados").select("*"),
     supabase.from("espacos").select("*").order("nome"),
     supabase.from("sessoes").select("*").order("data"),
     supabase.from("presencas").select("*"),
-    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: unknown[] | null }> } } }).from("fornecedores").select("*").order("nome"),
-    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: unknown[] | null }> } } }).from("servicos").select("*").order("nome"),
-    (supabase as never as { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }).from("reserva_servicos").select("*"),
-    (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null }> } } }).from("reserva_alteracoes").select("*").order("criado_em", { ascending: false }),
+    sbAny.from("servicos").select("*").order!("nome"),
+    sbAny.from("reserva_servicos").select("*"),
+    // Leituras de admin via server fn (tabelas trancadas para anon)
+    sfListarFornecedores().catch(() => [] as unknown[]),
+    sfListarAlteracoes().catch(() => [] as unknown[]),
   ]);
   _reservas = (rs ?? []).map(rowToReserva);
   _convidados = (cs ?? []).map(rowToConvidado);
   _espacos = (es ?? []).map(rowToEspaco);
   _sessoes = (ss ?? []).map(rowToSessao);
   _presencas = (ps ?? []).map(rowToPresenca);
-  _fornecedores = ((fs ?? []) as Record<string, unknown>[]).map(rowToFornecedor);
   _servicos = ((svs ?? []) as Record<string, unknown>[]).map(rowToServico);
   _reservaServicos = ((rsv ?? []) as Record<string, unknown>[]).map(rowToReservaServico);
-  _alteracoes = ((als ?? []) as Record<string, unknown>[]).map(rowToAlteracao);
+  _fornecedores = (fornecedoresRows as Record<string, unknown>[]).map(rowToFornecedor);
+  _alteracoes = (alteracoesRows as Record<string, unknown>[]).map(rowToAlteracao);
   emit();
 }
 
@@ -79,22 +98,13 @@ function applyChange<T extends { id: string }>(
 function subscribe() {
   supabase
     .channel("agd-sync")
-    .on("postgres_changes", { event: "*", schema: "public", table: "reservas" }, (p) => {
-      _reservas = applyChange(_reservas, p as never, rowToReserva); emit();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "convidados" }, (p) => {
-      _convidados = applyChange(_convidados, p as never, rowToConvidado); emit();
-    })
     .on("postgres_changes", { event: "*", schema: "public", table: "espacos" }, (p) => {
       _espacos = applyChange(_espacos, p as never, rowToEspaco); emit();
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "sessoes" }, (p) => {
-      _sessoes = applyChange(_sessoes, p as never, rowToSessao); emit();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "presencas" }, (p) => {
-      _presencas = applyChange(_presencas, p as never, rowToPresenca); emit();
-    })
     .subscribe();
+  // NOTA: realtime de reservas/convidados/sessoes/presencas foi removido da
+  // publicação para não expor dados sensíveis em canais abertos. O update local
+  // (optimistic) garante UI responsiva; um refresh manual recarrega o estado.
 }
 
 export function initStore(): Promise<void> {
@@ -112,6 +122,7 @@ export function initStore(): Promise<void> {
 export const Store = {
   initialized: () => _initialized,
   ready: initStore,
+  refresh: hydrate,
 
   // RESERVAS
   reservas: (): Reserva[] => _reservas,
@@ -131,18 +142,8 @@ export const Store = {
   async criarReserva(
     input: Omit<Reserva, "id" | "status" | "entidade_pagamento" | "referencia_pagamento" | "criado_em">,
   ): Promise<Reserva> {
-    const ref = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join("");
-    const entidade = String(99000 + Math.floor(Math.random() * 999));
-    const payload = {
-      ...input,
-      status: "Pendente" as Status,
-      entidade_pagamento: entidade,
-      referencia_pagamento: ref,
-    };
-    const { data, error } = await supabase
-      .from("reservas").insert(payload as never).select().single();
-    if (error || !data) throw new Error(error?.message || "Falha ao criar reserva");
-    const nova = rowToReserva(data);
+    const data = await sfCriarReserva({ data: { input: input as unknown as Record<string, unknown> } });
+    const nova = rowToReserva(data as unknown as Record<string, unknown>);
     if (!_reservas.some((x) => x.id === nova.id)) _reservas = [nova, ..._reservas];
     emit();
     return nova;
@@ -151,13 +152,19 @@ export const Store = {
   async atualizarStatus(id: string, status: Status) {
     _reservas = _reservas.map((r) => (r.id === id ? { ...r, status } : r));
     emit();
-    await supabase.from("reservas").update({ status }).eq("id", id);
+    await sfAtualizarReserva({ data: { id, patch: { status } } });
   },
 
   async atualizarReserva(id: string, patch: Partial<Reserva>) {
     _reservas = _reservas.map((r) => (r.id === id ? { ...r, ...patch } : r));
     emit();
-    await supabase.from("reservas").update(patch as never).eq("id", id);
+    await sfAtualizarReserva({ data: { id, patch: patch as unknown as Record<string, unknown> } });
+  },
+
+  async removerReserva(id: string) {
+    _reservas = _reservas.filter((r) => r.id !== id);
+    emit();
+    await sfRemoverReserva({ data: { id } });
   },
 
   // CONVIDADOS
@@ -167,15 +174,8 @@ export const Store = {
     _convidados.filter((c) => c.reserva_id === reserva_id),
 
   async addConvidado(reserva_id: string, nome: string, telefone?: string): Promise<Convidado> {
-    const qr = `AGD-${reserva_id.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`.toUpperCase();
-    const payload = {
-      reserva_id, nome_convidado: nome,
-      telefone: telefone || null, qr_code_hash: qr, status_checkin: false,
-    };
-    const { data, error } = await supabase
-      .from("convidados").insert(payload).select().single();
-    if (error || !data) throw new Error(error?.message || "Falha ao adicionar convidado");
-    const c = rowToConvidado(data);
+    const data = await sfAddConvidado({ data: { reserva_id, nome, telefone: telefone || null } });
+    const c = rowToConvidado(data as unknown as Record<string, unknown>);
     if (!_convidados.some((x) => x.id === c.id)) _convidados = [..._convidados, c];
     emit();
     return c;
@@ -184,13 +184,13 @@ export const Store = {
   async atualizarConvidado(id: string, patch: Partial<Convidado>) {
     _convidados = _convidados.map((c) => (c.id === id ? { ...c, ...patch } : c));
     emit();
-    await supabase.from("convidados").update(patch as never).eq("id", id);
+    await sfAtualizarConvidado({ data: { id, patch: patch as unknown as Record<string, unknown> } });
   },
 
   async removerConvidado(id: string) {
     _convidados = _convidados.filter((c) => c.id !== id);
     emit();
-    await supabase.from("convidados").delete().eq("id", id);
+    await sfRemoverConvidado({ data: { id } });
   },
 
   async rsvp(hash: string, status: RsvpStatus, acompanhantes = 0) {
@@ -205,7 +205,6 @@ export const Store = {
     return { ...c, ...patch };
   },
 
-  // CHECK-IN (evento simples - 1ª vez)
   async checkin(hash: string): Promise<{ ok: boolean; msg: string; convidado?: Convidado }> {
     const c = _convidados.find((x) => x.qr_code_hash === hash);
     if (!c) return { ok: false, msg: "QR Code inválido" };
@@ -213,11 +212,10 @@ export const Store = {
     const updated = { ...c, status_checkin: true };
     _convidados = _convidados.map((x) => (x.id === c.id ? updated : x));
     emit();
-    await supabase.from("convidados").update({ status_checkin: true }).eq("id", c.id);
+    await sfAtualizarConvidado({ data: { id: c.id, patch: { status_checkin: true } } });
     return { ok: true, msg: "Entrada autorizada", convidado: updated };
   },
 
-  // CHECK-IN por sessão (cursos/formações)
   async checkinSessao(hash: string, sessao_id: string): Promise<{ ok: boolean; msg: string; convidado?: Convidado }> {
     const c = _convidados.find((x) => x.qr_code_hash === hash);
     if (!c) return { ok: false, msg: "QR Code inválido" };
@@ -226,12 +224,14 @@ export const Store = {
     if (c.reserva_id !== sessao.reserva_id) return { ok: false, msg: "QR não pertence a este curso" };
     const existe = _presencas.find((p) => p.sessao_id === sessao_id && p.convidado_id === c.id);
     if (existe) return { ok: false, msg: "Presença já marcada nesta sessão", convidado: c };
-    const { data, error } = await supabase.from("presencas")
-      .insert({ sessao_id, convidado_id: c.id }).select().single();
-    if (error || !data) return { ok: false, msg: error?.message ?? "Falha ao marcar presença" };
-    _presencas = [..._presencas, rowToPresenca(data)];
-    emit();
-    return { ok: true, msg: `Presença marcada · ${sessao.titulo}`, convidado: c };
+    try {
+      const data = await sfInserirPresenca({ data: { sessao_id, convidado_id: c.id } });
+      _presencas = [..._presencas, rowToPresenca(data as unknown as Record<string, unknown>)];
+      emit();
+      return { ok: true, msg: `Presença marcada · ${sessao.titulo}`, convidado: c };
+    } catch (e) {
+      return { ok: false, msg: e instanceof Error ? e.message : "Falha ao marcar presença" };
+    }
   },
 
   // ESPACOS
@@ -240,9 +240,8 @@ export const Store = {
   getEspaco: (id: string) => _espacos.find((e) => e.id === id),
 
   async criarEspaco(input: Omit<Espaco, "id" | "criado_em">): Promise<Espaco> {
-    const { data, error } = await supabase.from("espacos").insert(input as never).select().single();
-    if (error || !data) throw new Error(error?.message || "Falha ao criar espaço");
-    const e = rowToEspaco(data);
+    const data = await sfCriarEspaco({ data: { input: input as unknown as Record<string, unknown> } });
+    const e = rowToEspaco(data as unknown as Record<string, unknown>);
     if (!_espacos.some((x) => x.id === e.id)) _espacos = [..._espacos, e];
     emit();
     return e;
@@ -250,15 +249,15 @@ export const Store = {
   async atualizarEspaco(id: string, patch: Partial<Espaco>) {
     _espacos = _espacos.map((e) => (e.id === id ? { ...e, ...patch } : e));
     emit();
-    await supabase.from("espacos").update(patch as never).eq("id", id);
+    await sfAtualizarEspaco({ data: { id, patch: patch as unknown as Record<string, unknown> } });
   },
   async removerEspaco(id: string) {
     _espacos = _espacos.filter((e) => e.id !== id);
     emit();
-    await supabase.from("espacos").delete().eq("id", id);
+    await sfRemoverEspaco({ data: { id } });
   },
 
-  // SESSOES (cursos)
+  // SESSOES
   sessoes: (): Sessao[] => _sessoes,
   sessoesDaReserva: (reserva_id: string) =>
     _sessoes
@@ -266,9 +265,8 @@ export const Store = {
       .sort((a, b) => (a.data + (a.hora_inicio ?? "")).localeCompare(b.data + (b.hora_inicio ?? ""))),
 
   async criarSessao(input: Omit<Sessao, "id" | "criado_em">) {
-    const { data, error } = await supabase.from("sessoes").insert(input as never).select().single();
-    if (error || !data) throw new Error(error?.message || "Falha ao criar sessão");
-    const s = rowToSessao(data);
+    const data = await sfCriarSessao({ data: { input: input as unknown as Record<string, unknown> } });
+    const s = rowToSessao(data as unknown as Record<string, unknown>);
     if (!_sessoes.some((x) => x.id === s.id)) _sessoes = [..._sessoes, s];
     emit();
     return s;
@@ -276,13 +274,13 @@ export const Store = {
   async atualizarSessao(id: string, patch: Partial<Sessao>) {
     _sessoes = _sessoes.map((s) => (s.id === id ? { ...s, ...patch } : s));
     emit();
-    await supabase.from("sessoes").update(patch as never).eq("id", id);
+    await sfAtualizarSessao({ data: { id, patch: patch as unknown as Record<string, unknown> } });
   },
   async removerSessao(id: string) {
     _sessoes = _sessoes.filter((s) => s.id !== id);
     _presencas = _presencas.filter((p) => p.sessao_id !== id);
     emit();
-    await supabase.from("sessoes").delete().eq("id", id);
+    await sfRemoverSessao({ data: { id } });
   },
 
   // PRESENCAS
@@ -292,7 +290,7 @@ export const Store = {
   async removerPresenca(id: string) {
     _presencas = _presencas.filter((p) => p.id !== id);
     emit();
-    await supabase.from("presencas").delete().eq("id", id);
+    await sfRemoverPresenca({ data: { id } });
   },
 
   // MARKETPLACE
@@ -304,39 +302,31 @@ export const Store = {
   servicosDaReserva: (reserva_id: string) => _reservaServicos.filter((rs) => rs.reserva_id === reserva_id),
 
   async criarFornecedor(input: Omit<Fornecedor, "id" | "criado_em">): Promise<Fornecedor> {
-    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: { message: string } | null }> } } } };
-    const { data, error } = await sb.from("fornecedores").insert(input).select().single();
-    if (error || !data) throw new Error(error?.message || "Falha");
-    const f = rowToFornecedor(data as Record<string, unknown>);
+    const data = await sfCriarFornecedor({ data: { input: input as unknown as Record<string, unknown> } });
+    const f = rowToFornecedor(data as unknown as Record<string, unknown>);
     _fornecedores = [..._fornecedores, f]; emit(); return f;
   },
   async atualizarFornecedor(id: string, patch: Partial<Fornecedor>) {
     _fornecedores = _fornecedores.map((f) => f.id === id ? { ...f, ...patch } : f); emit();
-    const sb = supabase as never as { from: (t: string) => { update: (v: unknown) => { eq: (k: string, v: string) => Promise<unknown> } } };
-    await sb.from("fornecedores").update(patch).eq("id", id);
+    await sfAtualizarFornecedor({ data: { id, patch: patch as unknown as Record<string, unknown> } });
   },
   async removerFornecedor(id: string) {
     _fornecedores = _fornecedores.filter((f) => f.id !== id); emit();
-    const sb = supabase as never as { from: (t: string) => { delete: () => { eq: (k: string, v: string) => Promise<unknown> } } };
-    await sb.from("fornecedores").delete().eq("id", id);
+    await sfRemoverFornecedor({ data: { id } });
   },
 
   async criarServico(input: Omit<Servico, "id" | "criado_em">): Promise<Servico> {
-    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: { message: string } | null }> } } } };
-    const { data, error } = await sb.from("servicos").insert(input).select().single();
-    if (error || !data) throw new Error(error?.message || "Falha");
-    const s = rowToServico(data as Record<string, unknown>);
+    const data = await sfCriarServico({ data: { input: input as unknown as Record<string, unknown> } });
+    const s = rowToServico(data as unknown as Record<string, unknown>);
     _servicos = [..._servicos, s]; emit(); return s;
   },
   async atualizarServico(id: string, patch: Partial<Servico>) {
     _servicos = _servicos.map((s) => s.id === id ? { ...s, ...patch } : s); emit();
-    const sb = supabase as never as { from: (t: string) => { update: (v: unknown) => { eq: (k: string, v: string) => Promise<unknown> } } };
-    await sb.from("servicos").update(patch).eq("id", id);
+    await sfAtualizarServico({ data: { id, patch: patch as unknown as Record<string, unknown> } });
   },
   async removerServico(id: string) {
     _servicos = _servicos.filter((s) => s.id !== id); emit();
-    const sb = supabase as never as { from: (t: string) => { delete: () => { eq: (k: string, v: string) => Promise<unknown> } } };
-    await sb.from("servicos").delete().eq("id", id);
+    await sfRemoverServico({ data: { id } });
   },
 
   async adicionarServicoReserva(reserva_id: string, servico_id: string, quantidade = 1): Promise<ReservaServico> {
@@ -344,21 +334,17 @@ export const Store = {
     if (!sv) throw new Error("Serviço não encontrado");
     const subtotal = Number(sv.preco_base) * quantidade;
     const payload = { reserva_id, servico_id, quantidade, preco_unit: sv.preco_base, subtotal, estado: "pendente" as ReservaServicoEstado };
-    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: { message: string } | null }> } } } };
-    const { data, error } = await sb.from("reserva_servicos").insert(payload).select().single();
-    if (error || !data) throw new Error(error?.message || "Falha");
-    const rs = rowToReservaServico(data as Record<string, unknown>);
+    const data = await sfAdicionarReservaServico({ data: { input: payload as unknown as Record<string, unknown> } });
+    const rs = rowToReservaServico(data as unknown as Record<string, unknown>);
     _reservaServicos = [..._reservaServicos, rs]; emit(); return rs;
   },
   async atualizarServicoReserva(id: string, patch: Partial<ReservaServico>) {
     _reservaServicos = _reservaServicos.map((rs) => rs.id === id ? { ...rs, ...patch } : rs); emit();
-    const sb = supabase as never as { from: (t: string) => { update: (v: unknown) => { eq: (k: string, v: string) => Promise<unknown> } } };
-    await sb.from("reserva_servicos").update(patch).eq("id", id);
+    await sfAtualizarReservaServico({ data: { id, patch: patch as unknown as Record<string, unknown> } });
   },
   async removerServicoReserva(id: string) {
     _reservaServicos = _reservaServicos.filter((rs) => rs.id !== id); emit();
-    const sb = supabase as never as { from: (t: string) => { delete: () => { eq: (k: string, v: string) => Promise<unknown> } } };
-    await sb.from("reserva_servicos").delete().eq("id", id);
+    await sfRemoverReservaServico({ data: { id } });
   },
 
   // HISTÓRICO DE ALTERAÇÕES
@@ -376,14 +362,12 @@ export const Store = {
     const original = _reservas.find((r) => r.id === reserva_id);
     if (!original) throw new Error("Reserva não encontrada");
 
-    // Detecta urgência: alteração de data/período e evento dentro de 48h
     const eventoEm = new Date(original.data_evento + "T12:00:00").getTime();
     const horas = (eventoEm - Date.now()) / 36e5;
     const mudaData = patch.data_evento && patch.data_evento !== original.data_evento;
     const mudaPeriodo = patch.periodo && patch.periodo !== original.periodo;
-    const urgente = horas < 48 && (mudaData || mudaPeriodo);
+    const urgente = (horas < 48 && (mudaData || mudaPeriodo)) ? true : false;
 
-    const sb = supabase as never as { from: (t: string) => { insert: (v: unknown) => Promise<{ error: { message: string } | null }> } };
     const rows: Record<string, unknown>[] = [];
     for (const [campo, valor_novo] of Object.entries(patch)) {
       const valor_antigo = (original as unknown as Record<string, unknown>)[campo];
@@ -396,12 +380,17 @@ export const Store = {
       });
     }
     if (rows.length > 0) {
-      await sb.from("reserva_alteracoes").insert(rows);
+      await sfRegistarAlteracoes({ data: { rows } });
+      // recarrega histórico
+      try {
+        const rows2 = await sfListarAlteracoes();
+        _alteracoes = (rows2 as unknown as Record<string, unknown>[]).map(rowToAlteracao);
+      } catch { /* ignora */ }
     }
     await Store.atualizarReserva(reserva_id, { ...patch, alteracao_urgente: urgente || original.alteracao_urgente });
   },
 
-  // ADMIN AUTH (provisional)
+  // ADMIN AUTH (provisional — partilha de password até implementarmos auth próprio)
   isAdmin: () => typeof window !== "undefined" && localStorage.getItem(K_ADMIN) === "1",
   loginAdmin: (password: string) => {
     if (password === "agd2026") { localStorage.setItem(K_ADMIN, "1"); return true; }
