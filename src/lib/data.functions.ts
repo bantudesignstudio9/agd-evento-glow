@@ -261,7 +261,7 @@ export const sfListarAlteracoes = createServerFn({ method: "GET" })
     const sb = await admin();
     const { data, error } = await sb.from("reserva_alteracoes").select("*").order("criado_em", { ascending: false });
     throwIf(error, "Falha ao listar alterações");
-    return (data ?? []) as Record<string, unknown>[];
+    return (data ?? []) as never;
   });
 
 export const sfRegistarAlteracoes = createServerFn({ method: "POST" })
