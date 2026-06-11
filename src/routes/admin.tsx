@@ -46,7 +46,7 @@ function AdminLayout() {
             />
             {err && <div className="mt-2 text-xs text-destructive">{err}</div>}
             <button className="btn-navy mt-4 w-full rounded-xl py-2 text-sm">Entrar</button>
-            <p className="mt-3 text-[11px] text-muted-foreground">Dica para demo: <code>agd2026</code></p>
+            <p className="mt-3 text-[11px] text-muted-foreground">Acesso restrito · contacte a AGD</p>
           </form>
         </div>
       </main>

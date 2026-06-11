@@ -1,5 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+// Comparação em tempo constante (evita timing attacks)
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+
+
 /**
  * Cron endpoint - chamado diariamente por pg_cron.
  * Envia SMS de lembrete (D-2) aos convidados ainda não lembrados,
@@ -8,12 +18,24 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/hooks/lembretes")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        // Shared-secret guard — só o pg_cron / scheduler com o secret pode chamar.
+        // Sem CRON_SECRET configurado o endpoint fica fechado (devolve 401).
+        const expected = process.env.CRON_SECRET;
+        const url0 = new URL(request.url);
+        const provided = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
+          || url0.searchParams.get("secret")
+          || "";
+        if (!expected || provided.length !== expected.length || !timingSafeEqualStr(provided, expected)) {
+          return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+        }
+
         const url = process.env.SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (!url || !key) {
           return Response.json({ ok: false, error: "missing supabase env" }, { status: 500 });
         }
+
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

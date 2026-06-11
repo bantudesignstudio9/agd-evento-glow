@@ -99,11 +99,11 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
   }
   async function eliminar() {
     if (!confirm(`Eliminar definitivamente a reserva de ${r.cliente_nome}?`)) return;
-    const { supabase } = await import("@/integrations/supabase/client");
-    await supabase.from("reservas").delete().eq("id", r.id);
+    await Store.removerReserva(r.id);
     toast.success("Reserva eliminada");
     onClose();
   }
+
 
   return (
     <div className="space-y-3">
