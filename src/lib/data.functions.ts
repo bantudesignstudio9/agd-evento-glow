@@ -36,7 +36,7 @@ export const sfCriarReserva = createServerFn({ method: "POST" })
     const payload = { ...data.input, status: "Pendente", entidade_pagamento: entidade, referencia_pagamento: ref };
     const { data: row, error } = await sb.from("reservas").insert(payload).select().single();
     throwIf(error, "Falha ao criar reserva");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfAtualizarReserva = createServerFn({ method: "POST" })
@@ -69,7 +69,7 @@ export const sfAddConvidado = createServerFn({ method: "POST" })
     };
     const { data: row, error } = await sb.from("convidados").insert(payload).select().single();
     throwIf(error, "Falha ao adicionar convidado");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfAtualizarConvidado = createServerFn({ method: "POST" })
@@ -97,7 +97,7 @@ export const sfInserirPresenca = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: row, error } = await sb.from("presencas").insert(data).select().single();
     throwIf(error, "Falha ao marcar presença");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfRemoverPresenca = createServerFn({ method: "POST" })
@@ -116,7 +116,7 @@ export const sfCriarEspaco = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: row, error } = await sb.from("espacos").insert(data.input).select().single();
     throwIf(error, "Falha ao criar espaço");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfAtualizarEspaco = createServerFn({ method: "POST" })
@@ -144,7 +144,7 @@ export const sfCriarSessao = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: row, error } = await sb.from("sessoes").insert(data.input).select().single();
     throwIf(error, "Falha ao criar sessão");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfAtualizarSessao = createServerFn({ method: "POST" })
@@ -180,7 +180,7 @@ export const sfCriarFornecedor = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: row, error } = await sb.from("fornecedores").insert(data.input).select().single();
     throwIf(error, "Falha");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfAtualizarFornecedor = createServerFn({ method: "POST" })
@@ -207,7 +207,7 @@ export const sfCriarServico = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: row, error } = await sb.from("servicos").insert(data.input).select().single();
     throwIf(error, "Falha");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfAtualizarServico = createServerFn({ method: "POST" })
@@ -234,7 +234,7 @@ export const sfAdicionarReservaServico = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: row, error } = await sb.from("reserva_servicos").insert(data.input).select().single();
     throwIf(error, "Falha");
-    return row as Record<string, unknown>;
+    return row as never;
   });
 
 export const sfAtualizarReservaServico = createServerFn({ method: "POST" })
