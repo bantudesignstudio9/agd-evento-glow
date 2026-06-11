@@ -171,7 +171,7 @@ export const sfListarFornecedores = createServerFn({ method: "GET" })
     const sb = await admin();
     const { data, error } = await sb.from("fornecedores").select("*").order("nome");
     throwIf(error, "Falha ao listar fornecedores");
-    return (data ?? []) as Record<string, unknown>[];
+    return (data ?? []) as never;
   });
 
 export const sfCriarFornecedor = createServerFn({ method: "POST" })
