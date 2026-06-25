@@ -122,7 +122,7 @@ function RootComponent() {
               <p className="mt-2 text-xs text-muted-foreground">
                 Seg–Sex · 08h00 às 16h00<br />
                 📞 925 788 112<br />
-                📞 995 788 112
+                📞 955 788 112
               </p>
             </div>
           </div>
