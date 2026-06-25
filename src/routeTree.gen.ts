@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConviteRouteImport } from './routes/convite'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -22,6 +23,11 @@ import { Route as AdminAgendaRouteImport } from './routes/admin.agenda'
 import { Route as ApiPublicHooksLembretesRouteImport } from './routes/api/public/hooks/lembretes'
 import { Route as AdminReservasIdEditarRouteImport } from './routes/admin.reservas.$id.editar'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/convite': typeof ConviteRoute
   '/dashboard': typeof DashboardRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/convite'
     | '/dashboard'
+    | '/sitemap.xml'
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
     | '/'
     | '/convite'
     | '/dashboard'
+    | '/sitemap.xml'
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/convite'
     | '/dashboard'
+    | '/sitemap.xml'
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
@@ -174,11 +186,19 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   ConviteRoute: typeof ConviteRoute
   DashboardRoute: typeof DashboardRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiPublicHooksLembretesRoute: typeof ApiPublicHooksLembretesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -303,6 +323,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   ConviteRoute: ConviteRoute,
   DashboardRoute: DashboardRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiPublicHooksLembretesRoute: ApiPublicHooksLembretesRoute,
 }
 export const routeTree = rootRouteImport
