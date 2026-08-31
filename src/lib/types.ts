@@ -41,6 +41,26 @@ export const DEFAULT_LOCAL: LocalEvento = {
   lng: 15.7392,
 };
 
+export type MetodoPagamento = "iban" | "express";
+
+export interface ConfigPagamento {
+  id: string;
+  iban: string;
+  titular: string;
+  banco: string;
+  express_numero: string;
+  instrucoes: string;
+}
+
+export const DEFAULT_CONFIG_PAGAMENTO: ConfigPagamento = {
+  id: "",
+  iban: "0040.0000.2456.6626.1024.7",
+  titular: "Abréu G.Daniel - Comercial Lda",
+  banco: "BAI",
+  express_numero: "925788112",
+  instrucoes: "Após a transferência ou pagamento por Multicaixa Express, carregue o comprovativo para validarmos a sua reserva.",
+};
+
 export interface Reserva {
   id: string;
   cliente_nome: string;
@@ -63,7 +83,11 @@ export interface Reserva {
   max_convidados?: number;
   espaco_id?: string | null;
   alteracao_urgente?: boolean;
+  metodo_pagamento?: MetodoPagamento | null;
+  comprovativo_url?: string | null;
+  comprovativo_em?: string | null;
 }
+
 
 export type RsvpStatus = "pendente" | "confirmado" | "recusado";
 
