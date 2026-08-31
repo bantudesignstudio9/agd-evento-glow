@@ -2,7 +2,7 @@ import { sfUploadAsset } from "./data.functions";
 
 export async function uploadEventAsset(
   reservaId: string,
-  kind: "logo" | "bg" | "template",
+  kind: "logo" | "bg" | "template" | "comprovativo",
   file: File,
 ): Promise<string> {
   const buf = await file.arrayBuffer();

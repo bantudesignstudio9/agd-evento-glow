@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      config_pagamento: {
+        Row: {
+          banco: string
+          criado_em: string
+          express_numero: string
+          iban: string
+          id: string
+          instrucoes: string
+          titular: string
+          updated_at: string
+        }
+        Insert: {
+          banco?: string
+          criado_em?: string
+          express_numero?: string
+          iban?: string
+          id?: string
+          instrucoes?: string
+          titular?: string
+          updated_at?: string
+        }
+        Update: {
+          banco?: string
+          criado_em?: string
+          express_numero?: string
+          iban?: string
+          id?: string
+          instrucoes?: string
+          titular?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       convidados: {
         Row: {
           detalhes: Json | null
@@ -289,6 +322,8 @@ export type Database = {
           cliente_email: string
           cliente_nome: string
           cliente_telefone: string
+          comprovativo_em: string | null
+          comprovativo_url: string | null
           criado_em: string
           data_evento: string
           design_convite: Json | null
@@ -301,6 +336,7 @@ export type Database = {
           local_evento: Json | null
           max_convidados: number | null
           mensagem_boas_vindas: string | null
+          metodo_pagamento: string | null
           pacote_id: string
           periodo: string
           referencia_pagamento: string
@@ -312,10 +348,12 @@ export type Database = {
           cliente_email: string
           cliente_nome: string
           cliente_telefone: string
+          comprovativo_em?: string | null
+          comprovativo_url?: string | null
           criado_em?: string
           data_evento: string
           design_convite?: Json | null
-          entidade_pagamento: string
+          entidade_pagamento?: string
           espaco_id?: string | null
           evento_nome?: string | null
           hora_fim?: string | null
@@ -324,6 +362,7 @@ export type Database = {
           local_evento?: Json | null
           max_convidados?: number | null
           mensagem_boas_vindas?: string | null
+          metodo_pagamento?: string | null
           pacote_id: string
           periodo: string
           referencia_pagamento: string
@@ -335,6 +374,8 @@ export type Database = {
           cliente_email?: string
           cliente_nome?: string
           cliente_telefone?: string
+          comprovativo_em?: string | null
+          comprovativo_url?: string | null
           criado_em?: string
           data_evento?: string
           design_convite?: Json | null
@@ -347,6 +388,7 @@ export type Database = {
           local_evento?: Json | null
           max_convidados?: number | null
           mensagem_boas_vindas?: string | null
+          metodo_pagamento?: string | null
           pacote_id?: string
           periodo?: string
           referencia_pagamento?: string

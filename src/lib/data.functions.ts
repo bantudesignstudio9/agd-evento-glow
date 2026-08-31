@@ -274,13 +274,33 @@ export const sfRegistarAlteracoes = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- CONFIG PAGAMENTO ----------
+export const sfLerConfigPagamento = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const sb = await admin();
+    const { data, error } = await sb.from("config_pagamento").select("*").order("criado_em");
+    throwIf(error, "Falha ao ler config de pagamento");
+    return ((data ?? [])[0] ?? null) as never;
+  });
+
+export const sfAtualizarConfigPagamento = createServerFn({ method: "POST" })
+  .inputValidator((d: { id: string; patch: Record<string, unknown> }) => d)
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { error } = await sb.from("config_pagamento").update(data.patch).eq("id", data.id);
+    throwIf(error, "Falha ao guardar config de pagamento");
+    return { ok: true };
+  });
+
 // ---------- STORAGE upload ----------
 export const sfUploadAsset = createServerFn({ method: "POST" })
-  .inputValidator((d: { reservaId: string; kind: "logo" | "bg" | "template"; filename: string; contentType: string; base64: string }) => d)
+  .inputValidator((d: { reservaId: string; kind: "logo" | "bg" | "template" | "comprovativo"; filename: string; contentType: string; base64: string }) => d)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const ext = data.filename.split(".").pop()?.toLowerCase() || "png";
-    const path = `${data.reservaId}/${data.kind}-${Date.now()}.${ext}`;
+    const path = data.kind === "comprovativo"
+      ? `comprovativos/${data.reservaId}/${Date.now()}.${ext}`
+      : `${data.reservaId}/${data.kind}-${Date.now()}.${ext}`;
     const bin = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
     const { error } = await supabaseAdmin.storage.from("event-assets")
       .upload(path, bin, { upsert: true, contentType: data.contentType });
@@ -288,3 +308,4 @@ export const sfUploadAsset = createServerFn({ method: "POST" })
     const { data: pub } = supabaseAdmin.storage.from("event-assets").getPublicUrl(path);
     return { url: pub.publicUrl, path };
   });
+
