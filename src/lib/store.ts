@@ -2,7 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   Reserva, Convidado, Period, Status, Espaco, Sessao, Presenca, RsvpStatus,
   Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
+  ConfigPagamento,
 } from "./types";
+import { DEFAULT_CONFIG_PAGAMENTO } from "./types";
 import {
   sfCriarReserva, sfAtualizarReserva, sfRemoverReserva,
   sfAddConvidado, sfAtualizarConvidado, sfRemoverConvidado,
@@ -13,6 +15,7 @@ import {
   sfCriarServico, sfAtualizarServico, sfRemoverServico,
   sfAdicionarReservaServico, sfAtualizarReservaServico, sfRemoverReservaServico,
   sfListarAlteracoes, sfRegistarAlteracoes,
+  sfLerConfigPagamento, sfAtualizarConfigPagamento,
 } from "./data.functions";
 
 const K_ADMIN = "agd_admin";
@@ -27,6 +30,7 @@ let _fornecedores: Fornecedor[] = [];
 let _servicos: Servico[] = [];
 let _reservaServicos: ReservaServico[] = [];
 let _alteracoes: ReservaAlteracao[] = [];
+let _configPagamento: ConfigPagamento = DEFAULT_CONFIG_PAGAMENTO;
 let _initialized = false;
 let _initPromise: Promise<void> | null = null;
 
@@ -53,7 +57,7 @@ async function hydrate() {
   const [
     { data: rs }, { data: cs }, { data: es }, { data: ss }, { data: ps },
     { data: svs }, { data: rsv },
-    fornecedoresRows, alteracoesRows,
+    fornecedoresRows, alteracoesRows, configRow,
   ] = await Promise.all([
     supabase.from("reservas").select("*").order("criado_em", { ascending: false }),
     supabase.from("convidados").select("*"),
@@ -65,7 +69,12 @@ async function hydrate() {
     // Leituras de admin via server fn (tabelas trancadas para anon)
     sfListarFornecedores().catch(() => [] as unknown[]),
     sfListarAlteracoes().catch(() => [] as unknown[]),
-  ]);
+    sfLerConfigPagamento().catch(() => null),
+  ]) as unknown as [
+    { data: unknown[] | null }, { data: unknown[] | null }, { data: unknown[] | null },
+    { data: unknown[] | null }, { data: unknown[] | null }, { data: unknown[] | null },
+    { data: unknown[] | null }, unknown[], unknown[], unknown,
+  ];
   _reservas = (rs ?? []).map(rowToReserva);
   _convidados = (cs ?? []).map(rowToConvidado);
   _espacos = (es ?? []).map(rowToEspaco);
@@ -75,6 +84,7 @@ async function hydrate() {
   _reservaServicos = ((rsv ?? []) as Record<string, unknown>[]).map(rowToReservaServico);
   _fornecedores = (fornecedoresRows as Record<string, unknown>[]).map(rowToFornecedor);
   _alteracoes = (alteracoesRows as Record<string, unknown>[]).map(rowToAlteracao);
+  if (configRow) _configPagamento = configRow as unknown as ConfigPagamento;
   emit();
 }
 
@@ -388,6 +398,18 @@ export const Store = {
       } catch { /* ignora */ }
     }
     await Store.atualizarReserva(reserva_id, { ...patch, alteracao_urgente: urgente || original.alteracao_urgente });
+  },
+
+  // CONFIG PAGAMENTO
+  configPagamento: (): ConfigPagamento => _configPagamento,
+  async atualizarConfigPagamento(patch: Partial<ConfigPagamento>) {
+    _configPagamento = { ..._configPagamento, ...patch };
+    emit();
+    if (_configPagamento.id) {
+      const { id: _omit, ...rest } = { ..._configPagamento, ...patch };
+      void _omit;
+      await sfAtualizarConfigPagamento({ data: { id: _configPagamento.id, patch: rest as unknown as Record<string, unknown> } });
+    }
   },
 
   // ADMIN AUTH (provisional — partilha de password até implementarmos auth próprio)
