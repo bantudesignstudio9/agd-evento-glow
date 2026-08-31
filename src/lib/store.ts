@@ -405,12 +405,15 @@ export const Store = {
   async atualizarConfigPagamento(patch: Partial<ConfigPagamento>) {
     _configPagamento = { ..._configPagamento, ...patch };
     emit();
-    if (_configPagamento.id) {
-      const { id: _omit, ...rest } = { ..._configPagamento, ...patch };
-      void _omit;
-      await sfAtualizarConfigPagamento({ data: { id: _configPagamento.id, patch: rest as unknown as Record<string, unknown> } });
-    }
+    if (!_configPagamento.id) return;
+    const c = _configPagamento;
+    const clean = {
+      iban: c.iban, titular: c.titular, banco: c.banco,
+      express_numero: c.express_numero, instrucoes: c.instrucoes,
+    };
+    await sfAtualizarConfigPagamento({ data: { id: c.id, patch: clean } });
   },
+
 
   // ADMIN AUTH (provisional — partilha de password até implementarmos auth próprio)
   isAdmin: () => typeof window !== "undefined" && localStorage.getItem(K_ADMIN) === "1",
