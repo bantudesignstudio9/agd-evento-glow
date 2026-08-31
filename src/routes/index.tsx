@@ -440,6 +440,123 @@ function StepDetalhes({ form, setForm }: { form: FormState; setForm: (f: FormSta
   );
 }
 
+function StepPagamento({
+  pkg, metodo, setMetodo, comprovativoUrl, setComprovativoUrl, tempId,
+}: {
+  pkg: (typeof PACKAGES)[number];
+  metodo: MetodoPagamento | null;
+  setMetodo: (m: MetodoPagamento) => void;
+  comprovativoUrl: string;
+  setComprovativoUrl: (u: string) => void;
+  tempId: string;
+}) {
+  const cfg = Store.configPagamento();
+  const [enviando, setEnviando] = useState(false);
+  const [nomeFicheiro, setNomeFicheiro] = useState("");
+
+  async function onFile(f: File | undefined) {
+    if (!f) return;
+    setEnviando(true);
+    try {
+      const url = await uploadEventAsset(tempId, "comprovativo", f);
+      setComprovativoUrl(url);
+      setNomeFicheiro(f.name);
+      toast.success("Comprovativo carregado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao carregar comprovativo");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-6 md:grid-cols-[1fr_1.1fr]">
+      <div className="glass rounded-2xl p-6">
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">Método de pagamento</div>
+        <div className="mt-4 grid gap-3">
+          {([
+            { id: "iban" as const, titulo: "Transferência bancária (IBAN)", desc: `${cfg.banco} · ${cfg.titular}` },
+            { id: "express" as const, titulo: "Multicaixa Express", desc: `Nº ${cfg.express_numero}` },
+          ]).map((o) => (
+            <button
+              key={o.id}
+              onClick={() => setMetodo(o.id)}
+              className={`rounded-2xl p-4 text-left transition ${metodo === o.id ? "ring-2 ring-accent bg-white/70" : "ring-1 ring-border hover:bg-white/60"}`}
+            >
+              <div className="flex items-center gap-2 font-medium text-navy">
+                <Landmark className="h-4 w-4 text-accent" /> {o.titulo}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">{o.desc}</div>
+            </button>
+          ))}
+        </div>
+
+        {metodo && (
+          <div className="mt-5 space-y-3">
+            {metodo === "iban" ? (
+              <>
+                <CopyRow label="IBAN" value={cfg.iban} />
+                <CopyRow label="Titular" value={cfg.titular} />
+                <CopyRow label="Banco" value={cfg.banco} />
+              </>
+            ) : (
+              <CopyRow label="Multicaixa Express" value={cfg.express_numero} />
+            )}
+            <p className="text-xs text-muted-foreground">{cfg.instrucoes}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="glass-dark rounded-2xl p-6">
+        <div className="text-xs uppercase tracking-widest text-accent">Valor a pagar</div>
+        <div className="font-display text-4xl text-accent">{formatKz(pkg.preco)}</div>
+
+        <div className="mt-5 rounded-2xl border border-dashed border-white/25 p-5 text-center">
+          <Upload className="mx-auto h-6 w-6 text-white/70" />
+          <div className="mt-2 text-sm text-white">Comprovativo de pagamento (obrigatório)</div>
+          <p className="mt-1 text-xs text-white/60">Imagem ou PDF do comprovativo da transferência / Express.</p>
+          <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20">
+            {enviando ? "A carregar…" : comprovativoUrl ? "Substituir ficheiro" : "Escolher ficheiro"}
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              disabled={enviando}
+              onChange={(e) => onFile(e.target.files?.[0])}
+            />
+          </label>
+          {comprovativoUrl && (
+            <div className="mt-3 inline-flex items-center gap-2 text-xs text-success">
+              <Check className="h-3.5 w-3.5" /> {nomeFicheiro || "Comprovativo carregado"}
+            </div>
+          )}
+        </div>
+
+        <p className="mt-4 text-xs text-white/70">
+          Após concluir, receberá o código de gestão do evento. A AGD valida o comprovativo e confirma a reserva.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CopyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white/70 px-3 py-2">
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+        <div className="font-mono text-sm text-navy">{value}</div>
+      </div>
+      <button
+        onClick={() => { navigator.clipboard.writeText(value); toast.success("Copiado"); }}
+        className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-navy"
+      >
+        <Copy className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof Store.criarReserva>>; onIr: () => void }) {
   const pkg = PACKAGES.find((p) => p.id === reserva.pacote_id)!;
   return (
@@ -452,22 +569,23 @@ function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof St
           <Row k="Evento" v={reserva.tipo_evento} />
           <Row k="Data" v={format(new Date(reserva.data_evento), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })} />
           <Row k="Período" v={reserva.periodo === "manha" ? "Manhã (08h–13h)" : "Tarde (14h–19h)"} />
-          <Row k="Status" v={<span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">Aguardando Pagamento</span>} />
+          <Row k="Pagamento" v={reserva.metodo_pagamento === "express" ? "Multicaixa Express" : "Transferência (IBAN)"} />
+          <Row k="Comprovativo" v={reserva.comprovativo_url ? "Enviado" : "Em falta"} />
+          <Row k="Status" v={<span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">Aguardando validação</span>} />
         </dl>
       </div>
 
       <div className="glass-dark rounded-2xl p-6">
-        <div className="text-xs uppercase tracking-widest text-accent">Pagamento por Referência Multicaixa</div>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <PayBox label="Entidade" value={reserva.entidade_pagamento} />
+        <div className="text-xs uppercase tracking-widest text-accent">Código de gestão do evento</div>
+        <div className="mt-3">
           <PayBox label="Referência" value={reserva.referencia_pagamento} />
         </div>
         <div className="mt-3 rounded-2xl bg-white/10 p-4">
-          <div className="text-xs uppercase tracking-widest text-white/70">Valor a pagar</div>
+          <div className="text-xs uppercase tracking-widest text-white/70">Valor</div>
           <div className="font-display text-4xl text-accent">{formatKz(pkg.preco)}</div>
         </div>
         <p className="mt-4 text-xs text-white/70">
-          Efetue o pagamento em qualquer ATM ou Multicaixa Express. Após confirmação, o seu pacote será ativado e poderá gerir os seus convidados.
+          Guarde esta referência: é com ela que acede e gere o seu evento. A AGD também lhe envia este código por WhatsApp após validar o comprovativo.
         </p>
         <button onClick={onIr} className="btn-gold mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-medium">
           Ir para a minha reserva <ChevronRight className="h-4 w-4" />
@@ -476,6 +594,7 @@ function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof St
     </div>
   );
 }
+
 
 function PayBox({ label, value }: { label: string; value: string }) {
   return (
