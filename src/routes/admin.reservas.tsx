@@ -105,6 +105,11 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
   }
 
 
+  const waCodigo = whatsappLink(
+    r.cliente_telefone,
+    mensagemCodigoEvento(r, typeof window !== "undefined" ? window.location.origin : ""),
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-2">
@@ -136,7 +141,10 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
           <Row k="Pacote" v={`${pkg.nome} (${formatKz(pkg.preco)})`} />
           <Row k="Data" v={format(new Date(r.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
           <Row k="Período" v={r.periodo === "manha" ? "Manhã" : "Tarde"} />
-          <Row k="Entidade" v={r.entidade_pagamento} />
+          <Row k="Pagamento" v={r.metodo_pagamento === "express" ? "Multicaixa Express" : r.metodo_pagamento === "iban" ? "Transferência (IBAN)" : "—"} />
+          <Row k="Comprovativo" v={r.comprovativo_url
+            ? <a href={r.comprovativo_url} target="_blank" rel="noreferrer" className="text-navy underline">Ver ficheiro</a>
+            : <span className="text-muted-foreground">Em falta</span>} />
           <Row k="Status" v={<StatusBadge status={r.status} />} />
         </>
       )}
@@ -159,6 +167,16 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
             </Link>
           </div>
         )}
+
+        <a
+          href={waCodigo ?? "#"}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => { if (!waCodigo) { e.preventDefault(); toast.error("Telefone do cliente inválido"); } }}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-success/30 bg-success/10 px-4 py-2 text-sm text-success"
+        >
+          <MessageCircle className="h-4 w-4" /> Enviar código por WhatsApp
+        </a>
 
         {r.status === "Pendente" && (
           <button onClick={() => Store.atualizarStatus(r.id, "Pago")} className="btn-gold inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
