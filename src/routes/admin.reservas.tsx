@@ -5,7 +5,8 @@ import { useStoreVersion } from "@/hooks/useStore";
 import { PACKAGES, formatKz, type Reserva, type PackageId, type Period } from "@/lib/types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
-import { CheckCircle2, Plus, Trash2, X, XCircle, Pencil, Save } from "lucide-react";
+import { CheckCircle2, Plus, Trash2, X, XCircle, Pencil, Save, MessageCircle } from "lucide-react";
+import { whatsappLink, mensagemCodigoEvento } from "@/lib/whatsapp";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/reservas")({
