@@ -71,9 +71,11 @@ async function hydrate() {
     sfListarAlteracoes().catch(() => [] as unknown[]),
     sfLerConfigPagamento().catch(() => null),
   ]) as unknown as [
-    { data: unknown[] | null }, { data: unknown[] | null }, { data: unknown[] | null },
-    { data: unknown[] | null }, { data: unknown[] | null }, { data: unknown[] | null },
-    { data: unknown[] | null }, unknown[], unknown[], unknown,
+    { data: Record<string, unknown>[] | null }, { data: Record<string, unknown>[] | null },
+    { data: Record<string, unknown>[] | null }, { data: Record<string, unknown>[] | null },
+    { data: Record<string, unknown>[] | null }, { data: Record<string, unknown>[] | null },
+    { data: Record<string, unknown>[] | null },
+    Record<string, unknown>[], Record<string, unknown>[], unknown,
   ];
   _reservas = (rs ?? []).map(rowToReserva);
   _convidados = (cs ?? []).map(rowToConvidado);
