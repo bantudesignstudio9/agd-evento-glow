@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { useEffect, useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { Building2, CalendarRange, LayoutDashboard, ListChecks, LogOut, ScanLine, Shield, Store as StoreIcon } from "lucide-react";
+import { Building2, CalendarRange, LayoutDashboard, ListChecks, LogOut, ScanLine, Shield, Store as StoreIcon, Landmark } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   component: AdminLayout,
@@ -59,6 +59,7 @@ function AdminLayout() {
     { to: "/admin/reservas", label: "Reservas", icon: <ListChecks className="h-4 w-4" /> },
     { to: "/admin/espacos", label: "Espaços", icon: <Building2 className="h-4 w-4" /> },
     { to: "/admin/marketplace", label: "Marketplace", icon: <StoreIcon className="h-4 w-4" /> },
+    { to: "/admin/pagamentos", label: "Pagamentos", icon: <Landmark className="h-4 w-4" /> },
     { to: "/admin/checkin", label: "Check-in", icon: <ScanLine className="h-4 w-4" /> },
   ];
 

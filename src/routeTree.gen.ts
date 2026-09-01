@@ -16,6 +16,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminReservasRouteImport } from './routes/admin.reservas'
+import { Route as AdminPagamentosRouteImport } from './routes/admin.pagamentos'
 import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
 import { Route as AdminEspacosRouteImport } from './routes/admin.espacos'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
@@ -56,6 +57,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminReservasRoute = AdminReservasRouteImport.update({
   id: '/reservas',
   path: '/reservas',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPagamentosRoute = AdminPagamentosRouteImport.update({
+  id: '/pagamentos',
+  path: '/pagamentos',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
+  '/admin/pagamentos': typeof AdminPagamentosRoute
   '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
+  '/admin/pagamentos': typeof AdminPagamentosRoute
   '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
+  '/admin/pagamentos': typeof AdminPagamentosRoute
   '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/admin/checkin'
     | '/admin/espacos'
     | '/admin/marketplace'
+    | '/admin/pagamentos'
     | '/admin/reservas'
     | '/admin/'
     | '/admin/reservas/$id/editar'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/admin/checkin'
     | '/admin/espacos'
     | '/admin/marketplace'
+    | '/admin/pagamentos'
     | '/admin/reservas'
     | '/admin'
     | '/admin/reservas/$id/editar'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/admin/checkin'
     | '/admin/espacos'
     | '/admin/marketplace'
+    | '/admin/pagamentos'
     | '/admin/reservas'
     | '/admin/'
     | '/admin/reservas/$id/editar'
@@ -241,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReservasRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/pagamentos': {
+      id: '/admin/pagamentos'
+      path: '/pagamentos'
+      fullPath: '/admin/pagamentos'
+      preLoaderRoute: typeof AdminPagamentosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/marketplace': {
       id: '/admin/marketplace'
       path: '/marketplace'
@@ -303,6 +322,7 @@ interface AdminRouteChildren {
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminEspacosRoute: typeof AdminEspacosRoute
   AdminMarketplaceRoute: typeof AdminMarketplaceRoute
+  AdminPagamentosRoute: typeof AdminPagamentosRoute
   AdminReservasRoute: typeof AdminReservasRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -312,6 +332,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCheckinRoute: AdminCheckinRoute,
   AdminEspacosRoute: AdminEspacosRoute,
   AdminMarketplaceRoute: AdminMarketplaceRoute,
+  AdminPagamentosRoute: AdminPagamentosRoute,
   AdminReservasRoute: AdminReservasRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
 }
