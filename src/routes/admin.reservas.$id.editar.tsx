@@ -116,8 +116,7 @@ function EditarReserva() {
           <F label="Data"><input type="date" value={form.data_evento} onChange={(e) => setForm({ ...form, data_evento: e.target.value })} className="inp" /></F>
           <F label="Período">
             <select value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value as Period })} className="inp">
-              <option value="manha">Manhã</option>
-              <option value="tarde">Tarde</option>
+              {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
           </F>
           <F label="Hora início"><input type="time" value={form.hora_inicio} onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} className="inp" /></F>

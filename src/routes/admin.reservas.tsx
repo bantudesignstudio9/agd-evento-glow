@@ -57,7 +57,7 @@ function AdminReservas() {
                 <tr key={r.id} onClick={() => setSelectedId(r.id)}
                     className={`cursor-pointer border-t border-border/60 transition hover:bg-white/60 ${selectedId === r.id ? "bg-white/80" : "bg-white/30"}`}>
                   <td className="p-3"><div className="font-medium">{r.cliente_nome}</div><div className="text-xs text-muted-foreground">{r.cliente_email}</div></td>
-                  <td className="p-3">{format(new Date(r.data_evento), "dd/MM/yyyy", { locale: pt })}<div className="text-xs text-muted-foreground">{r.periodo === "manha" ? "Manhã" : "Tarde"}</div></td>
+                  <td className="p-3">{format(new Date(r.data_evento), "dd/MM/yyyy", { locale: pt })}<div className="text-xs text-muted-foreground">{labelPeriodo(r.periodo)}</div></td>
                   <td className="p-3">{PACKAGES.find((p) => p.id === r.pacote_id)?.nome}</td>
                   <td className="p-3"><StatusBadge status={r.status} /></td>
                 </tr>
@@ -130,7 +130,7 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
           <Inp label="Tipo de evento" v={form.tipo_evento} on={(v) => setForm({ ...form, tipo_evento: v })} />
           <Inp label="Data" type="date" v={form.data_evento} on={(v) => setForm({ ...form, data_evento: v })} />
           <Sel label="Período" v={form.periodo} on={(v) => setForm({ ...form, periodo: v as Period })}
-               opts={[{ v: "manha", l: "Manhã" }, { v: "tarde", l: "Tarde" }]} />
+               opts={PERIODOS.map((p) => ({ v: p.value, l: p.label }))} />
           <Sel label="Pacote" v={form.pacote_id} on={(v) => setForm({ ...form, pacote_id: v as PackageId })}
                opts={PACKAGES.map((p) => ({ v: p.id, l: p.nome }))} />
         </div>
@@ -141,7 +141,7 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
           <Row k="Evento" v={r.tipo_evento} />
           <Row k="Pacote" v={`${pkg.nome} (${formatKz(pkg.preco)})`} />
           <Row k="Data" v={format(new Date(r.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
-          <Row k="Período" v={r.periodo === "manha" ? "Manhã" : "Tarde"} />
+          <Row k="Período" v={labelPeriodo(r.periodo)} />
           <Row k="Pagamento" v={r.metodo_pagamento === "express" ? "Multicaixa Express" : r.metodo_pagamento === "iban" ? "Transferência (IBAN)" : "—"} />
           <Row k="Comprovativo" v={r.comprovativo_url
             ? <a href={r.comprovativo_url} target="_blank" rel="noreferrer" className="text-navy underline">Ver ficheiro</a>
@@ -242,7 +242,7 @@ function NovaReservaModal({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-2 gap-2">
             <Inp label="Data" type="date" v={form.data_evento} on={(v) => setForm({ ...form, data_evento: v })} />
             <Sel label="Período" v={form.periodo} on={(v) => setForm({ ...form, periodo: v as Period })}
-                 opts={[{ v: "manha", l: "Manhã" }, { v: "tarde", l: "Tarde" }]} />
+                 opts={PERIODOS.map((p) => ({ v: p.value, l: p.label }))} />
           </div>
           <Sel label="Pacote" v={form.pacote_id} on={(v) => setForm({ ...form, pacote_id: v as PackageId })}
                opts={PACKAGES.map((p) => ({ v: p.id, l: `${p.nome} · ${formatKz(p.preco)}` }))} />

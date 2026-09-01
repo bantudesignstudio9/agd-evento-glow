@@ -69,7 +69,7 @@ export async function gerarConvitePDF(
   doc.setFontSize(10);
   const hora = reserva.hora_inicio && reserva.hora_fim
     ? `${reserva.hora_inicio} — ${reserva.hora_fim}`
-    : reserva.periodo === "manha" ? "Período da Manhã" : "Período da Tarde";
+    : `Período da ${labelPeriodo(reserva.periodo)}`;
   doc.text(hora, W / 2, 322, { align: "center" });
 
   const endereco = reserva.local_evento?.endereco ?? DEFAULT_LOCAL.endereco;

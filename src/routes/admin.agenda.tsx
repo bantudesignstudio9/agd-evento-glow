@@ -25,8 +25,8 @@ const CORES_ESTADO: Record<string, { bg: string; bd: string }> = {
 };
 
 function periodoToHoras(p: Period): { start: string; end: string } {
-  if (p === "manha") return { start: "08:00:00", end: "13:00:00" };
-  return { start: "14:00:00", end: "20:00:00" };
+  const h = horasPeriodo(p);
+  return { start: `${h.inicio}:00`, end: `${h.fim}:00` };
 }
 
 function AdminAgenda() {
@@ -165,7 +165,7 @@ function Drawer({ r, onClose }: { r: Reserva; onClose: () => void }) {
         </div>
 
         <div className="space-y-2 text-sm">
-          <Row icon={<Calendar className="h-4 w-4" />}>{format(new Date(r.data_evento), "EEEE, d 'de' MMMM yyyy", { locale: pt })} · {r.periodo === "manha" ? "Manhã" : "Tarde"}</Row>
+          <Row icon={<Calendar className="h-4 w-4" />}>{format(new Date(r.data_evento), "EEEE, d 'de' MMMM yyyy", { locale: pt })} · {labelPeriodo(r.periodo)}</Row>
           <Row>Tipo: <b>{r.tipo_evento}</b></Row>
           {pkg && <Row>Pacote: <b>{pkg.nome}</b> ({formatKz(pkg.preco)})</Row>}
           {espaco && <Row icon={<MapPin className="h-4 w-4" />}>{espaco.nome}</Row>}
