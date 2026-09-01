@@ -266,12 +266,10 @@ function StepCalendario({
   const today = new Date();
 
   const ocupados = useMemo(() => (data ? Store.periodosOcupados(format(data, "yyyy-MM-dd"), espacoId ?? undefined) : []), [data, espacoId]);
-  const manhaOcupada = ocupados.includes("manha");
-  const tardeOcupada = ocupados.includes("tarde");
 
   function diaTotalmenteOcupado(d: Date) {
     const ps = Store.periodosOcupados(format(d, "yyyy-MM-dd"), espacoId ?? undefined);
-    return ps.includes("manha") && ps.includes("tarde");
+    return PERIODOS.every((p) => ps.includes(p.value));
   }
 
   return (
@@ -321,24 +319,21 @@ function StepCalendario({
         </div>
 
         <div className="mt-5 grid gap-3">
-          <PeriodButton
-            active={periodo === "manha"}
-            disabled={!data || manhaOcupada}
-            onClick={() => setPeriodo("manha")}
-            icon={<Sun className="h-5 w-5" />}
-            title="Manhã"
-            hint="08h00 — 13h00"
-            ocupado={manhaOcupada}
-          />
-          <PeriodButton
-            active={periodo === "tarde"}
-            disabled={!data || tardeOcupada}
-            onClick={() => setPeriodo("tarde")}
-            icon={<Sunset className="h-5 w-5" />}
-            title="Tarde"
-            hint="14h00 — 19h00"
-            ocupado={tardeOcupada}
-          />
+          {PERIODOS.map((p) => {
+            const ocupado = ocupados.includes(p.value);
+            return (
+              <PeriodButton
+                key={p.value}
+                active={periodo === p.value}
+                disabled={!data || ocupado}
+                onClick={() => setPeriodo(p.value)}
+                icon={p.value === "manha" ? <Sun className="h-5 w-5" /> : p.value === "tarde" ? <Sunset className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                title={p.label}
+                hint={p.hint}
+                ocupado={ocupado}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
@@ -586,7 +581,7 @@ function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof St
           <Row k="Cliente" v={reserva.cliente_nome} />
           <Row k="Evento" v={reserva.tipo_evento} />
           <Row k="Data" v={format(new Date(reserva.data_evento), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })} />
-          <Row k="Período" v={reserva.periodo === "manha" ? "Manhã (08h–13h)" : "Tarde (14h–19h)"} />
+          <Row k="Período" v={`${labelPeriodo(reserva.periodo)} (${horasPeriodo(reserva.periodo).hint})`} />
           <Row k="Pagamento" v={reserva.metodo_pagamento === "express" ? "Multicaixa Express" : "Transferência (IBAN)"} />
           <Row k="Comprovativo" v={reserva.comprovativo_url ? "Enviado" : "Em falta"} />
           <Row k="Status" v={<span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">Aguardando validação</span>} />

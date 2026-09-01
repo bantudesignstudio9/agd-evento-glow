@@ -10,7 +10,7 @@ export function mensagemConvite(reserva: Reserva, c: Convidado): string {
   const data = format(new Date(reserva.data_evento), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt });
   const hora = reserva.hora_inicio && reserva.hora_fim
     ? `${reserva.hora_inicio} — ${reserva.hora_fim}`
-    : reserva.periodo === "manha" ? "Manhã" : "Tarde";
+    : labelPeriodo(reserva.periodo);
   const local = reserva.local_evento?.endereco ?? "Anfiteatro do Gab. Prov. Cultura, Huambo";
   const link = `${typeof window !== "undefined" ? window.location.origin : ""}/convite?c=${c.qr_code_hash}`;
 

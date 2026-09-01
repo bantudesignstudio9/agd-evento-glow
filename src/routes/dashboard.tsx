@@ -403,7 +403,7 @@ function ResumoTab({ reserva }: { reserva: Reserva }) {
           <Row k="Telefone" v={reserva.cliente_telefone} />
           <Row k="Tipo de evento" v={labelTipoEvento(reserva.tipo_evento)} />
           <Row k="Data" v={format(new Date(reserva.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
-          <Row k="Período" v={reserva.periodo === "manha" ? "Manhã" : "Tarde"} />
+          <Row k="Período" v={`${labelPeriodo(reserva.periodo)} (${horasPeriodo(reserva.periodo).hint})`} />
           <Row k="Valor" v={formatKz(pkg.preco)} />
         </dl>
       </div>
@@ -459,8 +459,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 /* ---------------- DETALHES DO EVENTO ---------------- */
 function EventoTab({ reserva }: { reserva: Reserva }) {
   const [nome, setNome] = useState(reserva.evento_nome ?? "");
-  const [hi, setHi] = useState(reserva.hora_inicio ?? (reserva.periodo === "manha" ? "08:00" : "13:00"));
-  const [hf, setHf] = useState(reserva.hora_fim ?? (reserva.periodo === "manha" ? "12:00" : "16:00"));
+  const [hi, setHi] = useState(reserva.hora_inicio ?? horasPeriodo(reserva.periodo).inicio);
+  const [hf, setHf] = useState(reserva.hora_fim ?? horasPeriodo(reserva.periodo).fim);
   const [msg, setMsg] = useState(reserva.mensagem_boas_vindas ?? "");
   const local = reserva.local_evento ?? DEFAULT_LOCAL;
   const [endereco, setEndereco] = useState(local.endereco);
@@ -1190,7 +1190,7 @@ function ConvitePreview({
           {format(new Date(reserva.data_evento), "d MMM yyyy", { locale: pt })}
         </div>
         <div className="text-[10px]" style={{ color: subtle }}>
-          {reserva.hora_inicio && reserva.hora_fim ? `${reserva.hora_inicio} — ${reserva.hora_fim}` : reserva.periodo === "manha" ? "Manhã" : "Tarde"}
+          {reserva.hora_inicio && reserva.hora_fim ? `${reserva.hora_inicio} — ${reserva.hora_fim}` : labelPeriodo(reserva.periodo)}
         </div>
 
         <div className="mt-auto pt-3">

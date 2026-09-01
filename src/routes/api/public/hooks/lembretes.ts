@@ -76,7 +76,7 @@ export const Route = createFileRoute("/api/public/hooks/lembretes")({
           const r = reservas.find((x) => x.id === c.reserva_id);
           if (!r) continue;
           const titulo = r.evento_nome ?? r.tipo_evento;
-          const hora = r.hora_inicio ?? (r.periodo === "manha" ? "08:00" : "14:00");
+          const hora = r.hora_inicio ?? horasPeriodo(r.periodo).inicio;
           const body = `AGD Eventos · Lembrete\nOlá ${c.nome_convidado}, o evento "${titulo}" é daqui a 2 dias (${alvo}) às ${hora}.\nCódigo: ${c.qr_code_hash}`;
 
           let to = (c.telefone || "").replace(/[^\d+]/g, "");
