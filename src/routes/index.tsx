@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { PACKAGES, type PackageId, type Period, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO } from "@/lib/types";
+import { PACKAGES, type PackageId, type Period, type MetodoPagamento, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO } from "@/lib/types";
+import { uploadEventAsset } from "@/lib/upload";
+import { toast } from "sonner";
 import { Store, initStore } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users, Building2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users, Building2, Landmark, Upload } from "lucide-react";
 import { addDays, addMonths, eachDayOfInterval, endOfMonth, format, isBefore, isSameDay, isSameMonth, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -31,6 +33,9 @@ function Index() {
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "", tipo_evento_outro: "", max_convidados: "" });
   const [reservaCriada, setReservaCriada] = useState<Awaited<ReturnType<typeof Store.criarReserva>> | null>(null);
   const [criando, setCriando] = useState(false);
+  const [metodo, setMetodo] = useState<MetodoPagamento | null>(null);
+  const [comprovativoUrl, setComprovativoUrl] = useState("");
+  const [tempId] = useState(() => `pendente-${Math.random().toString(36).slice(2, 10)}`);
 
   // Pré-selecciona o primeiro espaço se ainda nenhum
   useEffect(() => {
@@ -44,10 +49,11 @@ function Index() {
   const podeAvancar =
     (step === 1 && pacote) ||
     (step === 2 && data && periodo) ||
-    (step === 3 && form.nome && form.email && form.telefone && tipoFinal);
+    (step === 3 && form.nome && form.email && form.telefone && tipoFinal) ||
+    (step === 4 && !!metodo && !!comprovativoUrl);
 
   async function finalizar() {
-    if (!pacote || !data || !periodo || criando || !tipoFinal) return;
+    if (!pacote || !data || !periodo || criando || !tipoFinal || !metodo || !comprovativoUrl) return;
     setCriando(true);
     try {
       const maxC = parseInt(form.max_convidados, 10);
@@ -61,9 +67,11 @@ function Index() {
         periodo,
         espaco_id: espacoId || null,
         max_convidados: Number.isFinite(maxC) && maxC > 0 ? Math.min(maxC, CAPACIDADE_ESPACO) : undefined,
+        metodo_pagamento: metodo,
+        comprovativo_url: comprovativoUrl,
+        comprovativo_em: new Date().toISOString(),
       });
       setReservaCriada(r);
-      setStep(4);
     } finally {
       setCriando(false);
     }
@@ -86,7 +94,7 @@ function Index() {
               AGD Eventos oferece espaço, decoração, protocolo e convites digitais para casamentos, aniversários e cerimónias corporativas em todo o território angolano.
             </p>
             <div className="mt-6 flex items-center gap-3 text-sm text-foreground/60">
-              <span className="inline-flex items-center gap-1"><Check className="h-4 w-4 text-success" /> Pagamento Multicaixa</span>
+              <span className="inline-flex items-center gap-1"><Check className="h-4 w-4 text-success" /> IBAN ou Multicaixa Express</span>
               <span className="inline-flex items-center gap-1"><Check className="h-4 w-4 text-success" /> QR Code para convidados</span>
             </div>
           </div>
@@ -94,7 +102,7 @@ function Index() {
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Reserva expresso</div>
             <div className="mt-2 font-display text-2xl text-navy">4 passos · 2 minutos</div>
             <ol className="mt-4 space-y-2 text-sm">
-              {["Escolha o pacote", "Escolha data e período", "Preencha os dados", "Receba a referência Multicaixa"].map((t, i) => (
+              {["Escolha o pacote", "Escolha data e período", "Preencha os dados", "Pague e envie o comprovativo"].map((t, i) => (
                 <li key={t} className="flex items-center gap-3">
                   <span className="grid h-6 w-6 place-items-center rounded-full bg-navy text-[11px] text-primary-foreground">{i + 1}</span>
                   {t}
@@ -138,9 +146,19 @@ function Index() {
           </div>
         )}
         {step === 3 && <StepDetalhes form={form} setForm={setForm} />}
+        {step === 4 && !reservaCriada && (
+          <StepPagamento
+            pkg={PACKAGES.find((p) => p.id === pacote) ?? PACKAGES[0]}
+            metodo={metodo}
+            setMetodo={setMetodo}
+            comprovativoUrl={comprovativoUrl}
+            setComprovativoUrl={setComprovativoUrl}
+            tempId={tempId}
+          />
+        )}
         {step === 4 && reservaCriada && <StepCheckout reserva={reservaCriada} onIr={() => navigate({ to: "/dashboard", search: { ref: reservaCriada.referencia_pagamento } as any })} />}
 
-        {step !== 4 && (
+        {!reservaCriada && (
           <div className="mt-8 flex items-center justify-between">
             <button
               onClick={() => setStep((s) => Math.max(1, s - 1) as Step)}
@@ -149,7 +167,7 @@ function Index() {
             >
               <ChevronLeft className="h-4 w-4" /> Voltar
             </button>
-            {step < 3 ? (
+            {step < 4 ? (
               <button
                 disabled={!podeAvancar}
                 onClick={() => setStep((s) => (s + 1) as Step)}
@@ -159,11 +177,11 @@ function Index() {
               </button>
             ) : (
               <button
-                disabled={!podeAvancar}
+                disabled={!podeAvancar || criando}
                 onClick={finalizar}
                 className="btn-gold inline-flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-medium disabled:opacity-40"
               >
-                Gerar referência <Sparkles className="h-4 w-4" />
+                {criando ? "A concluir…" : "Concluir reserva"} <Sparkles className="h-4 w-4" />
               </button>
             )}
           </div>
