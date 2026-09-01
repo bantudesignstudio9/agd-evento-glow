@@ -38,3 +38,18 @@ export function whatsappLink(telefone: string | undefined, msg: string): string 
   const full = num.length <= 9 ? `244${num}` : num;
   return `https://wa.me/${full}?text=${encodeURIComponent(msg)}`;
 }
+
+export function mensagemCodigoEvento(reserva: Reserva, origin: string): string {
+  const data = format(new Date(reserva.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt });
+  return [
+    `✨ *AGD Eventos* — Cultura, Organização e Excelência`,
+    ``,
+    `Olá ${reserva.cliente_nome},`,
+    `A sua reserva para *${reserva.evento_nome || reserva.tipo_evento}* (${data}) está registada.`,
+    ``,
+    `🔑 Código de gestão do evento: *${reserva.referencia_pagamento}*`,
+    `🔗 Aceda aqui: ${origin}/dashboard?ref=${reserva.referencia_pagamento}`,
+    ``,
+    `Guarde este código: é com ele que acede e gere o seu evento.`,
+  ].join("\n");
+}
