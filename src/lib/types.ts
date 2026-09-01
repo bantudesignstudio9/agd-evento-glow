@@ -1,5 +1,19 @@
 export type PackageId = "prata" | "ouro";
-export type Period = "manha" | "tarde";
+export type Period = "manha" | "tarde" | "noite";
+
+export const PERIODOS: { value: Period; label: string; inicio: string; fim: string; hint: string }[] = [
+  { value: "manha", label: "Manhã", inicio: "08:00", fim: "12:00", hint: "08h00 — 12h00" },
+  { value: "tarde", label: "Tarde", inicio: "13:00", fim: "17:30", hint: "13h00 — 17h30" },
+  { value: "noite", label: "Noite", inicio: "18:00", fim: "23:00", hint: "18h00 — 23h00" },
+];
+
+export function labelPeriodo(p: string): string {
+  return PERIODOS.find((x) => x.value === p)?.label ?? p;
+}
+export function horasPeriodo(p: string): { inicio: string; fim: string; hint: string } {
+  const found = PERIODOS.find((x) => x.value === p) ?? PERIODOS[0];
+  return { inicio: found.inicio, fim: found.fim, hint: found.hint };
+}
 export type Status = "Pendente" | "Pago" | "Cancelado";
 
 export interface Package {
