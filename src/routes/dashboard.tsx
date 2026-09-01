@@ -413,15 +413,21 @@ function ResumoTab({ reserva }: { reserva: Reserva }) {
           <Lock className="h-7 w-7 text-accent" />
           <div className="mt-3 font-display text-2xl">Aguardando confirmação de pagamento</div>
           <p className="mt-1 text-sm text-white/70">
-            Use os dados abaixo para pagamento via Multicaixa Express, ATM ou Internet Banking.
-            Assim que confirmarmos o pagamento, o Centro de Gestão do Evento será desbloqueado.
+            Recebemos o seu comprovativo. Assim que a AGD validar o pagamento,
+            o Centro de Gestão do Evento será desbloqueado.
           </p>
           <div className="mt-6 grid grid-cols-2 gap-4">
-            <Stat label="Entidade" value={reserva.entidade_pagamento} />
-            <Stat label="Referência" value={reserva.referencia_pagamento} />
+            <Stat label="Código de gestão" value={reserva.referencia_pagamento} />
             <Stat label="Montante" value={formatKz(pkg.preco)} />
-            <Stat label="Validade" value="48h" />
+            <Stat label="Método" value={reserva.metodo_pagamento === "express" ? "Multicaixa Express" : "Transferência (IBAN)"} />
+            <Stat label="Comprovativo" value={reserva.comprovativo_url ? "Enviado" : "Em falta"} />
           </div>
+          {reserva.comprovativo_url && (
+            <a href={reserva.comprovativo_url} target="_blank" rel="noreferrer"
+               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20">
+              <Link2 className="h-4 w-4" /> Ver comprovativo enviado
+            </a>
+          )}
         </div>
       ) : (
         <div className="glass rounded-2xl p-6">
@@ -432,8 +438,8 @@ function ResumoTab({ reserva }: { reserva: Reserva }) {
             {pkg.permite_convites_digitais && " e personalize convites digitais com QR Code"}.
           </p>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <Stat label="Entidade" value={reserva.entidade_pagamento} />
-            <Stat label="Referência" value={reserva.referencia_pagamento} />
+            <Stat label="Código de gestão" value={reserva.referencia_pagamento} />
+            <Stat label="Método" value={reserva.metodo_pagamento === "express" ? "Multicaixa Express" : "Transferência (IBAN)"} />
           </div>
         </div>
       )}
