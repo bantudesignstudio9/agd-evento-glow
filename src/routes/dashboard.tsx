@@ -30,7 +30,12 @@ import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
 
 
-const search = z.object({ ref: z.string().optional() });
+const search = z.object({
+  ref: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : String(v))),
+});
 
 export const Route = createFileRoute("/dashboard")({
   validateSearch: search,
