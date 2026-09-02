@@ -3,7 +3,7 @@ import { z } from "zod";
 import { useEffect, useState } from "react";
 import { Store, initStore } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { DEFAULT_DESIGN, DEFAULT_LOCAL, PACKAGES, tipoEventoUsaSessoes, type RsvpStatus } from "@/lib/types";
+import { DEFAULT_DESIGN, DEFAULT_LOCAL, PACKAGES, tipoEventoUsaSessoes, labelPeriodo, horasPeriodo, type RsvpStatus } from "@/lib/types";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";

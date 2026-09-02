@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import type { Convidado, DesignConvite, Reserva } from "./types";
-import { DEFAULT_LOCAL } from "./types";
+import { DEFAULT_LOCAL, labelPeriodo } from "./types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 

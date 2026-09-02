@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { PACKAGES, type PackageId, type Period, type MetodoPagamento, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO } from "@/lib/types";
+import { PACKAGES, type PackageId, type Period, type MetodoPagamento, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO, PERIODOS, labelPeriodo, horasPeriodo } from "@/lib/types";
 import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
 import { Store, initStore } from "@/lib/store";

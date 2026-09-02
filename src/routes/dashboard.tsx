@@ -6,6 +6,7 @@ import { Store } from "@/lib/store";
 import {
   PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
   COR_PRESETS, FONT_OPTIONS, labelTipoEvento,
+  labelPeriodo, horasPeriodo,
   tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma, tipoEventoUsaSessoes,
   type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes, type Sessao,
 } from "@/lib/types";
