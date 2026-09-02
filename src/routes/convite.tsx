@@ -12,7 +12,12 @@ import { MapaEvento } from "@/components/MapaEvento";
 import { gerarConvitePDF } from "@/lib/invite";
 import { toast } from "sonner";
 
-const search = z.object({ c: z.string().optional() });
+const search = z.object({
+  c: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : String(v))),
+});
 
 export const Route = createFileRoute("/convite")({
   validateSearch: search,
