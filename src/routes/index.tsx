@@ -5,7 +5,7 @@ import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
 import { Store, initStore } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users, Building2, Landmark, Upload } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Sparkles, Sun, Sunset, Moon, CalendarDays, User, Mail, Phone, PartyPopper, Copy, Users, Building2, Landmark, Upload } from "lucide-react";
 import { addDays, addMonths, eachDayOfInterval, endOfMonth, format, isBefore, isSameDay, isSameMonth, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { pt } from "date-fns/locale";
 
