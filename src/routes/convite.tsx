@@ -21,7 +21,8 @@ export const Route = createFileRoute("/convite")({
 
 function ConvitePage() {
   useStoreVersion();
-  const { c: hash } = Route.useSearch();
+  const { c: hashRaw } = Route.useSearch();
+  const hash = hashRaw === undefined ? undefined : String(hashRaw);
   const [ready, setReady] = useState(Store.initialized());
 
   useEffect(() => {
