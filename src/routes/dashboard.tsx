@@ -6,6 +6,7 @@ import { Store } from "@/lib/store";
 import {
   PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
   COR_PRESETS, FONT_OPTIONS, labelTipoEvento,
+  labelPeriodo, horasPeriodo,
   tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma, tipoEventoUsaSessoes,
   type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes, type Sessao,
 } from "@/lib/types";
@@ -29,7 +30,7 @@ import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
 
 
-const search = z.object({ ref: z.string().optional() });
+const search = z.object({ ref: z.union([z.string(), z.number()]).optional() });
 
 export const Route = createFileRoute("/dashboard")({
   validateSearch: search,
@@ -40,7 +41,8 @@ type Tab = "resumo" | "evento" | "sessoes" | "convidados" | "servicos" | "design
 
 function Dashboard() {
   useStoreVersion();
-  const { ref } = Route.useSearch();
+  const { ref: refRaw } = Route.useSearch();
+  const ref = refRaw === undefined ? undefined : String(refRaw);
   const [query, setQuery] = useState(ref ?? "");
   const reserva = useMemo(() => (query ? Store.getReservaByRef(query) : undefined), [query]);
 

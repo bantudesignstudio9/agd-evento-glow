@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { horasPeriodo } from "@/lib/types";
 
 // Comparação em tempo constante (evita timing attacks)
 function timingSafeEqualStr(a: string, b: string): boolean {

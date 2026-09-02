@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { PACKAGES, TIPOS_EVENTO, formatKz, type Period, type PackageId } from "@/lib/types";
+import { PACKAGES, TIPOS_EVENTO, formatKz, PERIODOS, type Period, type PackageId } from "@/lib/types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { ArrowLeft, AlertTriangle, Save, History, Bell } from "lucide-react";

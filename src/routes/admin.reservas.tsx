@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { PACKAGES, formatKz, type Reserva, type PackageId, type Period } from "@/lib/types";
+import { PACKAGES, formatKz, PERIODOS, labelPeriodo, type Reserva, type PackageId, type Period } from "@/lib/types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { CheckCircle2, Plus, Trash2, X, XCircle, Pencil, Save, MessageCircle } from "lucide-react";

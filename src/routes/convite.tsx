@@ -3,7 +3,7 @@ import { z } from "zod";
 import { useEffect, useState } from "react";
 import { Store, initStore } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { DEFAULT_DESIGN, DEFAULT_LOCAL, PACKAGES, tipoEventoUsaSessoes, type RsvpStatus } from "@/lib/types";
+import { DEFAULT_DESIGN, DEFAULT_LOCAL, PACKAGES, tipoEventoUsaSessoes, labelPeriodo, horasPeriodo, type RsvpStatus } from "@/lib/types";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -12,7 +12,7 @@ import { MapaEvento } from "@/components/MapaEvento";
 import { gerarConvitePDF } from "@/lib/invite";
 import { toast } from "sonner";
 
-const search = z.object({ c: z.string().optional() });
+const search = z.object({ c: z.union([z.string(), z.number()]).optional() });
 
 export const Route = createFileRoute("/convite")({
   validateSearch: search,
@@ -21,7 +21,8 @@ export const Route = createFileRoute("/convite")({
 
 function ConvitePage() {
   useStoreVersion();
-  const { c: hash } = Route.useSearch();
+  const { c: hashRaw } = Route.useSearch();
+  const hash = hashRaw === undefined ? undefined : String(hashRaw);
   const [ready, setReady] = useState(Store.initialized());
 
   useEffect(() => {

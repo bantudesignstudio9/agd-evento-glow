@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { PACKAGES, formatKz } from "@/lib/types";
+import { PACKAGES, formatKz, labelPeriodo } from "@/lib/types";
 import { CalendarDays, CheckCircle2, Clock, DollarSign } from "lucide-react";
 import { format, isAfter } from "date-fns";
 import { pt } from "date-fns/locale";
