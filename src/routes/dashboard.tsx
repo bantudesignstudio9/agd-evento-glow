@@ -30,12 +30,7 @@ import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
 
 
-const search = z.object({
-  ref: z
-    .union([z.string(), z.number()])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : String(v))),
-});
+const search = z.object({ ref: z.union([z.string(), z.number()]).optional() });
 
 export const Route = createFileRoute("/dashboard")({
   validateSearch: search,
@@ -46,7 +41,8 @@ type Tab = "resumo" | "evento" | "sessoes" | "convidados" | "servicos" | "design
 
 function Dashboard() {
   useStoreVersion();
-  const { ref } = Route.useSearch();
+  const { ref: refRaw } = Route.useSearch();
+  const ref = refRaw === undefined ? undefined : String(refRaw);
   const [query, setQuery] = useState(ref ?? "");
   const reserva = useMemo(() => (query ? Store.getReservaByRef(query) : undefined), [query]);
 
