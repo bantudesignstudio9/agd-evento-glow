@@ -72,7 +72,7 @@ function AdminReservas() {
 
       <aside className="glass-strong h-fit rounded-3xl p-6">
         {!selected && <p className="text-sm text-muted-foreground">Selecione uma reserva para ver detalhes ou crie uma nova.</p>}
-        {selected && <DetalheReserva r={selected} onClose={() => setSelectedId(null)} />}
+        {selected && <DetalheReserva key={selected.id} r={selected} onClose={() => setSelectedId(null)} />}
       </aside>
 
       {creating && <NovaReservaModal onClose={() => setCreating(false)} />}
