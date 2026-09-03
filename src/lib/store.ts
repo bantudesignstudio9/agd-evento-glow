@@ -119,6 +119,13 @@ function subscribe() {
   // (optimistic) garante UI responsiva; um refresh manual recarrega o estado.
 }
 
+// Recarrega apenas as reservas a partir do servidor (fonte de verdade)
+export async function refreshReservas() {
+  const { data } = await supabase.from("reservas").select("*").order("criado_em", { ascending: false });
+  _reservas = ((data ?? []) as unknown as Record<string, unknown>[]).map(rowToReserva);
+  emit();
+}
+
 export function initStore(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (_initialized) return Promise.resolve();
