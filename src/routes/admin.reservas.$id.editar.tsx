@@ -84,6 +84,12 @@ function EditarReserva() {
     try {
       const patch = {
         ...form,
+        pacote_id: form.pacote_id as PackageId,
+        periodo: form.periodo as Period,
+        hora_inicio: form.hora_inicio || null,
+        hora_fim: form.hora_fim || null,
+        evento_nome: form.evento_nome || null,
+        mensagem_boas_vindas: form.mensagem_boas_vindas || null,
         espaco_id: form.espaco_id || null,
         max_convidados: Number(form.max_convidados) || 0,
       };
