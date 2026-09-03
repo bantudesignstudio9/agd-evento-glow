@@ -9,7 +9,7 @@ import { CheckCircle2, Plus, Trash2, X, XCircle, Pencil, Save, MessageCircle } f
 import { whatsappLink, mensagemCodigoEvento } from "@/lib/whatsapp";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/admin/reservas")({
+export const Route = createFileRoute("/admin/reservas/")({
   component: AdminReservas,
 });
 
