@@ -93,16 +93,36 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
     pacote_id: r.pacote_id,
   });
 
+  const [busy, setBusy] = useState(false);
+
   async function salvar() {
-    await Store.atualizarReserva(r.id, form);
-    toast.success("Reserva atualizada");
-    setEditing(false);
+    setBusy(true);
+    try {
+      await Store.atualizarReserva(r.id, form);
+      toast.success("Reserva atualizada");
+      setEditing(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao guardar");
+    } finally { setBusy(false); }
   }
   async function eliminar() {
     if (!confirm(`Eliminar definitivamente a reserva de ${r.cliente_nome}?`)) return;
-    await Store.removerReserva(r.id);
-    toast.success("Reserva eliminada");
-    onClose();
+    try {
+      await Store.removerReserva(r.id);
+      toast.success("Reserva eliminada");
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao eliminar");
+    }
+  }
+  async function mudarStatus(status: "Pago" | "Pendente" | "Cancelado") {
+    setBusy(true);
+    try {
+      await Store.atualizarStatus(r.id, status);
+      toast.success(`Estado alterado para ${status}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao alterar estado");
+    } finally { setBusy(false); }
   }
 
 
