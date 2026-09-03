@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
 import { PACKAGES, TIPOS_EVENTO, formatKz, PERIODOS, type Period, type PackageId } from "@/lib/types";
@@ -12,6 +12,13 @@ export const Route = createFileRoute("/admin/reservas/$id/editar")({
   component: EditarReserva,
 });
 
+type FormState = {
+  cliente_nome: string; cliente_email: string; cliente_telefone: string;
+  tipo_evento: string; pacote_id: string; data_evento: string; periodo: string;
+  hora_inicio: string; hora_fim: string; evento_nome: string;
+  mensagem_boas_vindas: string; max_convidados: number; espaco_id: string;
+};
+
 function EditarReserva() {
   useStoreVersion();
   const { id } = Route.useParams();
@@ -20,28 +27,42 @@ function EditarReserva() {
   const espacos = Store.espacosAtivos();
   const alts = Store.alteracoesDaReserva(id);
 
-  const [form, setForm] = useState(() => r ? {
-    cliente_nome: r.cliente_nome,
-    cliente_email: r.cliente_email,
-    cliente_telefone: r.cliente_telefone,
-    tipo_evento: r.tipo_evento,
-    pacote_id: r.pacote_id,
-    data_evento: r.data_evento,
-    periodo: r.periodo,
-    hora_inicio: r.hora_inicio ?? "",
-    hora_fim: r.hora_fim ?? "",
-    evento_nome: r.evento_nome ?? "",
-    mensagem_boas_vindas: r.mensagem_boas_vindas ?? "",
-    max_convidados: r.max_convidados ?? 0,
-    espaco_id: r.espaco_id ?? "",
-  } : null);
+  const [form, setForm] = useState<FormState | null>(null);
   const [motivo, setMotivo] = useState("");
   const [notificar, setNotificar] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  // Garante hidratação (ex.: refresh directo neste URL) e dados frescos do servidor
+  useEffect(() => { void Store.ready().then(() => Store.refresh()); }, []);
+
+  // Preenche o formulário assim que a reserva estiver disponível
+  useEffect(() => {
+    if (!r || form) return;
+    setForm({
+      cliente_nome: r.cliente_nome,
+      cliente_email: r.cliente_email,
+      cliente_telefone: r.cliente_telefone,
+      tipo_evento: r.tipo_evento,
+      pacote_id: r.pacote_id,
+      data_evento: r.data_evento,
+      periodo: r.periodo,
+      hora_inicio: r.hora_inicio ?? "",
+      hora_fim: r.hora_fim ?? "",
+      evento_nome: r.evento_nome ?? "",
+      mensagem_boas_vindas: r.mensagem_boas_vindas ?? "",
+      max_convidados: r.max_convidados ?? 0,
+      espaco_id: r.espaco_id ?? "",
+    });
+  }, [r, form]);
+
   if (!r || !form) {
-    return <div className="glass-strong rounded-3xl p-8 text-center text-muted-foreground">Reserva não encontrada.</div>;
+    return (
+      <div className="glass-strong rounded-3xl p-8 text-center text-muted-foreground">
+        {Store.initialized() && !r ? "Reserva não encontrada." : "A carregar reserva…"}
+      </div>
+    );
   }
+
 
   const eventoEm = new Date(r.data_evento + "T12:00:00").getTime();
   const horasAteEvento = (eventoEm - Date.now()) / 36e5;
@@ -63,6 +84,12 @@ function EditarReserva() {
     try {
       const patch = {
         ...form,
+        pacote_id: form.pacote_id as PackageId,
+        periodo: form.periodo as Period,
+        hora_inicio: form.hora_inicio || undefined,
+        hora_fim: form.hora_fim || undefined,
+        evento_nome: form.evento_nome || undefined,
+        mensagem_boas_vindas: form.mensagem_boas_vindas || undefined,
         espaco_id: form.espaco_id || null,
         max_convidados: Number(form.max_convidados) || 0,
       };

@@ -9,7 +9,7 @@ import { CheckCircle2, Plus, Trash2, X, XCircle, Pencil, Save, MessageCircle } f
 import { whatsappLink, mensagemCodigoEvento } from "@/lib/whatsapp";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/admin/reservas")({
+export const Route = createFileRoute("/admin/reservas/")({
   component: AdminReservas,
 });
 
@@ -72,7 +72,7 @@ function AdminReservas() {
 
       <aside className="glass-strong h-fit rounded-3xl p-6">
         {!selected && <p className="text-sm text-muted-foreground">Selecione uma reserva para ver detalhes ou crie uma nova.</p>}
-        {selected && <DetalheReserva r={selected} onClose={() => setSelectedId(null)} />}
+        {selected && <DetalheReserva key={selected.id} r={selected} onClose={() => setSelectedId(null)} />}
       </aside>
 
       {creating && <NovaReservaModal onClose={() => setCreating(false)} />}
@@ -93,16 +93,36 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
     pacote_id: r.pacote_id,
   });
 
+  const [busy, setBusy] = useState(false);
+
   async function salvar() {
-    await Store.atualizarReserva(r.id, form);
-    toast.success("Reserva atualizada");
-    setEditing(false);
+    setBusy(true);
+    try {
+      await Store.atualizarReserva(r.id, form);
+      toast.success("Reserva atualizada");
+      setEditing(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao guardar");
+    } finally { setBusy(false); }
   }
   async function eliminar() {
     if (!confirm(`Eliminar definitivamente a reserva de ${r.cliente_nome}?`)) return;
-    await Store.removerReserva(r.id);
-    toast.success("Reserva eliminada");
-    onClose();
+    try {
+      await Store.removerReserva(r.id);
+      toast.success("Reserva eliminada");
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao eliminar");
+    }
+  }
+  async function mudarStatus(status: "Pago" | "Pendente" | "Cancelado") {
+    setBusy(true);
+    try {
+      await Store.atualizarStatus(r.id, status);
+      toast.success(`Estado alterado para ${status}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao alterar estado");
+    } finally { setBusy(false); }
   }
 
 
@@ -153,8 +173,8 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
       <div className="space-y-2 pt-2">
         {editing ? (
           <div className="flex gap-2">
-            <button onClick={salvar} className="btn-navy inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm">
-              <Save className="h-4 w-4" /> Guardar
+            <button onClick={salvar} disabled={busy} className="btn-navy inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm disabled:opacity-50">
+              <Save className="h-4 w-4" /> {busy ? "A guardar…" : "Guardar"}
             </button>
             <button onClick={() => setEditing(false)} className="rounded-xl border border-border bg-white/70 px-3 py-2 text-sm">Cancelar</button>
           </div>
@@ -180,17 +200,17 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
         </a>
 
         {r.status === "Pendente" && (
-          <button onClick={() => Store.atualizarStatus(r.id, "Pago")} className="btn-gold inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
+          <button onClick={() => mudarStatus("Pago")} disabled={busy} className="btn-gold inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-50">
             <CheckCircle2 className="h-4 w-4" /> Confirmar Pagamento
           </button>
         )}
         {r.status === "Pago" && (
-          <button onClick={() => Store.atualizarStatus(r.id, "Pendente")} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-4 py-2 text-sm">
+          <button onClick={() => mudarStatus("Pendente")} disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-4 py-2 text-sm disabled:opacity-50">
             Reverter para Pendente
           </button>
         )}
         {r.status !== "Cancelado" && (
-          <button onClick={() => Store.atualizarStatus(r.id, "Cancelado")} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          <button onClick={() => mudarStatus("Cancelado")} disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm text-destructive disabled:opacity-50">
             <XCircle className="h-4 w-4" /> Cancelar Reserva
           </button>
         )}

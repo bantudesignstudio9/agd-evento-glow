@@ -119,6 +119,13 @@ function subscribe() {
   // (optimistic) garante UI responsiva; um refresh manual recarrega o estado.
 }
 
+// Recarrega apenas as reservas a partir do servidor (fonte de verdade)
+export async function refreshReservas() {
+  const { data } = await supabase.from("reservas").select("*").order("criado_em", { ascending: false });
+  _reservas = ((data ?? []) as unknown as Record<string, unknown>[]).map(rowToReserva);
+  emit();
+}
+
 export function initStore(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (_initialized) return Promise.resolve();
@@ -158,25 +165,42 @@ export const Store = {
     const nova = rowToReserva(data as unknown as Record<string, unknown>);
     if (!_reservas.some((x) => x.id === nova.id)) _reservas = [nova, ..._reservas];
     emit();
+    // Confirma com o servidor (garante que a linha existe mesmo e sincroniza campos gerados)
+    void refreshReservas();
     return nova;
   },
 
   async atualizarStatus(id: string, status: Status) {
-    _reservas = _reservas.map((r) => (r.id === id ? { ...r, status } : r));
-    emit();
-    await sfAtualizarReserva({ data: { id, patch: { status } } });
+    await Store.atualizarReserva(id, { status } as Partial<Reserva>);
   },
 
   async atualizarReserva(id: string, patch: Partial<Reserva>) {
+    const anterior = _reservas;
     _reservas = _reservas.map((r) => (r.id === id ? { ...r, ...patch } : r));
     emit();
-    await sfAtualizarReserva({ data: { id, patch: patch as unknown as Record<string, unknown> } });
+    try {
+      await sfAtualizarReserva({ data: { id, patch: patch as unknown as Record<string, unknown> } });
+    } catch (e) {
+      // rollback: não deixar o ecrã mostrar dados que não ficaram guardados
+      _reservas = anterior;
+      emit();
+      throw e;
+    }
+    await refreshReservas();
   },
 
   async removerReserva(id: string) {
+    const anterior = _reservas;
     _reservas = _reservas.filter((r) => r.id !== id);
     emit();
-    await sfRemoverReserva({ data: { id } });
+    try {
+      await sfRemoverReserva({ data: { id } });
+    } catch (e) {
+      _reservas = anterior;
+      emit();
+      throw e;
+    }
+    await refreshReservas();
   },
 
   // CONVIDADOS

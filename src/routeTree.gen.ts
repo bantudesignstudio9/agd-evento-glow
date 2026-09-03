@@ -15,12 +15,12 @@ import { Route as ConviteRouteImport } from './routes/convite'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as AdminReservasRouteImport } from './routes/admin.reservas'
 import { Route as AdminPagamentosRouteImport } from './routes/admin.pagamentos'
 import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
 import { Route as AdminEspacosRouteImport } from './routes/admin.espacos'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 import { Route as AdminAgendaRouteImport } from './routes/admin.agenda'
+import { Route as AdminReservasIndexRouteImport } from './routes/admin.reservas.index'
 import { Route as ApiPublicHooksLembretesRouteImport } from './routes/api/public/hooks/lembretes'
 import { Route as AdminReservasIdEditarRouteImport } from './routes/admin.reservas.$id.editar'
 
@@ -54,11 +54,6 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminReservasRoute = AdminReservasRouteImport.update({
-  id: '/reservas',
-  path: '/reservas',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminPagamentosRoute = AdminPagamentosRouteImport.update({
   id: '/pagamentos',
   path: '/pagamentos',
@@ -84,15 +79,20 @@ const AdminAgendaRoute = AdminAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminReservasIndexRoute = AdminReservasIndexRouteImport.update({
+  id: '/reservas/',
+  path: '/reservas/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiPublicHooksLembretesRoute = ApiPublicHooksLembretesRouteImport.update({
   id: '/api/public/hooks/lembretes',
   path: '/api/public/hooks/lembretes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminReservasIdEditarRoute = AdminReservasIdEditarRouteImport.update({
-  id: '/$id/editar',
-  path: '/$id/editar',
-  getParentRoute: () => AdminReservasRoute,
+  id: '/reservas/$id/editar',
+  path: '/reservas/$id/editar',
+  getParentRoute: () => AdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -106,8 +106,8 @@ export interface FileRoutesByFullPath {
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
-  '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin/': typeof AdminIndexRoute
+  '/admin/reservas/': typeof AdminReservasIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
 }
@@ -121,8 +121,8 @@ export interface FileRoutesByTo {
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
-  '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin': typeof AdminIndexRoute
+  '/admin/reservas': typeof AdminReservasIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
 }
@@ -138,8 +138,8 @@ export interface FileRoutesById {
   '/admin/espacos': typeof AdminEspacosRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
-  '/admin/reservas': typeof AdminReservasRouteWithChildren
   '/admin/': typeof AdminIndexRoute
+  '/admin/reservas/': typeof AdminReservasIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
   '/api/public/hooks/lembretes': typeof ApiPublicHooksLembretesRoute
 }
@@ -156,8 +156,8 @@ export interface FileRouteTypes {
     | '/admin/espacos'
     | '/admin/marketplace'
     | '/admin/pagamentos'
-    | '/admin/reservas'
     | '/admin/'
+    | '/admin/reservas/'
     | '/admin/reservas/$id/editar'
     | '/api/public/hooks/lembretes'
   fileRoutesByTo: FileRoutesByTo
@@ -171,8 +171,8 @@ export interface FileRouteTypes {
     | '/admin/espacos'
     | '/admin/marketplace'
     | '/admin/pagamentos'
-    | '/admin/reservas'
     | '/admin'
+    | '/admin/reservas'
     | '/admin/reservas/$id/editar'
     | '/api/public/hooks/lembretes'
   id:
@@ -187,8 +187,8 @@ export interface FileRouteTypes {
     | '/admin/espacos'
     | '/admin/marketplace'
     | '/admin/pagamentos'
-    | '/admin/reservas'
     | '/admin/'
+    | '/admin/reservas/'
     | '/admin/reservas/$id/editar'
     | '/api/public/hooks/lembretes'
   fileRoutesById: FileRoutesById
@@ -246,13 +246,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/reservas': {
-      id: '/admin/reservas'
-      path: '/reservas'
-      fullPath: '/admin/reservas'
-      preLoaderRoute: typeof AdminReservasRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/pagamentos': {
       id: '/admin/pagamentos'
       path: '/pagamentos'
@@ -288,6 +281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAgendaRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/reservas/': {
+      id: '/admin/reservas/'
+      path: '/reservas'
+      fullPath: '/admin/reservas/'
+      preLoaderRoute: typeof AdminReservasIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/public/hooks/lembretes': {
       id: '/api/public/hooks/lembretes'
       path: '/api/public/hooks/lembretes'
@@ -297,25 +297,13 @@ declare module '@tanstack/react-router' {
     }
     '/admin/reservas/$id/editar': {
       id: '/admin/reservas/$id/editar'
-      path: '/$id/editar'
+      path: '/reservas/$id/editar'
       fullPath: '/admin/reservas/$id/editar'
       preLoaderRoute: typeof AdminReservasIdEditarRouteImport
-      parentRoute: typeof AdminReservasRoute
+      parentRoute: typeof AdminRoute
     }
   }
 }
-
-interface AdminReservasRouteChildren {
-  AdminReservasIdEditarRoute: typeof AdminReservasIdEditarRoute
-}
-
-const AdminReservasRouteChildren: AdminReservasRouteChildren = {
-  AdminReservasIdEditarRoute: AdminReservasIdEditarRoute,
-}
-
-const AdminReservasRouteWithChildren = AdminReservasRoute._addFileChildren(
-  AdminReservasRouteChildren,
-)
 
 interface AdminRouteChildren {
   AdminAgendaRoute: typeof AdminAgendaRoute
@@ -323,8 +311,9 @@ interface AdminRouteChildren {
   AdminEspacosRoute: typeof AdminEspacosRoute
   AdminMarketplaceRoute: typeof AdminMarketplaceRoute
   AdminPagamentosRoute: typeof AdminPagamentosRoute
-  AdminReservasRoute: typeof AdminReservasRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminReservasIndexRoute: typeof AdminReservasIndexRoute
+  AdminReservasIdEditarRoute: typeof AdminReservasIdEditarRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -333,8 +322,9 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminEspacosRoute: AdminEspacosRoute,
   AdminMarketplaceRoute: AdminMarketplaceRoute,
   AdminPagamentosRoute: AdminPagamentosRoute,
-  AdminReservasRoute: AdminReservasRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
+  AdminReservasIndexRoute: AdminReservasIndexRoute,
+  AdminReservasIdEditarRoute: AdminReservasIdEditarRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
