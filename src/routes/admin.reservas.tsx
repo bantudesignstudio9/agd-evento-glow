@@ -173,8 +173,8 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
       <div className="space-y-2 pt-2">
         {editing ? (
           <div className="flex gap-2">
-            <button onClick={salvar} className="btn-navy inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm">
-              <Save className="h-4 w-4" /> Guardar
+            <button onClick={salvar} disabled={busy} className="btn-navy inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm disabled:opacity-50">
+              <Save className="h-4 w-4" /> {busy ? "A guardar…" : "Guardar"}
             </button>
             <button onClick={() => setEditing(false)} className="rounded-xl border border-border bg-white/70 px-3 py-2 text-sm">Cancelar</button>
           </div>
@@ -200,17 +200,17 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
         </a>
 
         {r.status === "Pendente" && (
-          <button onClick={() => Store.atualizarStatus(r.id, "Pago")} className="btn-gold inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
+          <button onClick={() => mudarStatus("Pago")} disabled={busy} className="btn-gold inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-50">
             <CheckCircle2 className="h-4 w-4" /> Confirmar Pagamento
           </button>
         )}
         {r.status === "Pago" && (
-          <button onClick={() => Store.atualizarStatus(r.id, "Pendente")} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-4 py-2 text-sm">
+          <button onClick={() => mudarStatus("Pendente")} disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white/70 px-4 py-2 text-sm disabled:opacity-50">
             Reverter para Pendente
           </button>
         )}
         {r.status !== "Cancelado" && (
-          <button onClick={() => Store.atualizarStatus(r.id, "Cancelado")} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          <button onClick={() => mudarStatus("Cancelado")} disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm text-destructive disabled:opacity-50">
             <XCircle className="h-4 w-4" /> Cancelar Reserva
           </button>
         )}
