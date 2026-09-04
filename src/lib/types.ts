@@ -40,6 +40,15 @@ export function horasDosPeriodos(ps: Period[]): { inicio: string; fim: string; h
   const fim = horasPeriodo(ord[ord.length - 1]).fim;
   return { inicio, fim, hint: `${inicio.replace(":", "h")} — ${fim.replace(":", "h")}` };
 }
+/** Valor a pagar de uma reserva (usa o guardado, senão recalcula). */
+export function valorReserva(
+  r: { valor_total?: number | null; periodos?: string[] | null; periodo: string },
+  precoPacote: number,
+): number {
+  if (r.valor_total != null && Number(r.valor_total) > 0) return Number(r.valor_total);
+  return calcularPreco(precoPacote, periodosDaReserva(r)).total;
+}
+
 /** Preço final: pacote × nº de períodos, com 10% de desconto no dia inteiro. */
 export function calcularPreco(precoPacote: number, ps: Period[]): {
   n: number; bruto: number; desconto: number; total: number; diaInteiro: boolean;
