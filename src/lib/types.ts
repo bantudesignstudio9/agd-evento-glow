@@ -14,7 +14,44 @@ export function horasPeriodo(p: string): { inicio: string; fim: string; hint: st
   const found = PERIODOS.find((x) => x.value === p) ?? PERIODOS[0];
   return { inicio: found.inicio, fim: found.fim, hint: found.hint };
 }
+
+/** Períodos efectivos de uma reserva (compatível com reservas antigas de 1 período). */
+export function periodosDaReserva(r: { periodos?: string[] | null; periodo: string }): Period[] {
+  const ps = (r.periodos ?? []).filter(Boolean) as Period[];
+  return ps.length > 0 ? ordenarPeriodos(ps) : [r.periodo as Period];
+}
+export function ordenarPeriodos(ps: Period[]): Period[] {
+  const ordem = PERIODOS.map((p) => p.value);
+  return [...new Set(ps)].sort((a, b) => ordem.indexOf(a) - ordem.indexOf(b));
+}
+export const DIA_INTEIRO_DESCONTO = 0.1;
+export function isDiaInteiro(ps: Period[]): boolean {
+  return ps.length >= PERIODOS.length;
+}
+export function labelPeriodos(ps: Period[]): string {
+  if (ps.length === 0) return "—";
+  if (isDiaInteiro(ps)) return "Todo o dia";
+  return ordenarPeriodos(ps).map(labelPeriodo).join(" + ");
+}
+export function horasDosPeriodos(ps: Period[]): { inicio: string; fim: string; hint: string } {
+  const ord = ordenarPeriodos(ps);
+  if (ord.length === 0) return horasPeriodo("manha");
+  const inicio = horasPeriodo(ord[0]).inicio;
+  const fim = horasPeriodo(ord[ord.length - 1]).fim;
+  return { inicio, fim, hint: `${inicio.replace(":", "h")} — ${fim.replace(":", "h")}` };
+}
+/** Preço final: pacote × nº de períodos, com 10% de desconto no dia inteiro. */
+export function calcularPreco(precoPacote: number, ps: Period[]): {
+  n: number; bruto: number; desconto: number; total: number; diaInteiro: boolean;
+} {
+  const n = Math.max(1, ps.length);
+  const bruto = precoPacote * n;
+  const diaInteiro = isDiaInteiro(ps);
+  const desconto = diaInteiro ? Math.round(bruto * DIA_INTEIRO_DESCONTO) : 0;
+  return { n, bruto, desconto, total: bruto - desconto, diaInteiro };
+}
 export type Status = "Pendente" | "Pago" | "Cancelado";
+
 
 export interface Package {
   id: PackageId;
