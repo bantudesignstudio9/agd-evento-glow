@@ -339,9 +339,11 @@ export type Database = {
           metodo_pagamento: string | null
           pacote_id: string
           periodo: string
+          periodos: string[]
           referencia_pagamento: string
           status: string
           tipo_evento: string
+          valor_total: number | null
         }
         Insert: {
           alteracao_urgente?: boolean
@@ -365,9 +367,11 @@ export type Database = {
           metodo_pagamento?: string | null
           pacote_id: string
           periodo: string
+          periodos?: string[]
           referencia_pagamento: string
           status?: string
           tipo_evento: string
+          valor_total?: number | null
         }
         Update: {
           alteracao_urgente?: boolean
@@ -391,9 +395,11 @@ export type Database = {
           metodo_pagamento?: string | null
           pacote_id?: string
           periodo?: string
+          periodos?: string[]
           referencia_pagamento?: string
           status?: string
           tipo_evento?: string
+          valor_total?: number | null
         }
         Relationships: [
           {
