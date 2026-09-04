@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { PACKAGES, type PackageId, type Period, type MetodoPagamento, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO, PERIODOS, labelPeriodo, horasPeriodo, labelPeriodos, horasDosPeriodos, calcularPreco, periodosDaReserva, ordenarPeriodos } from "@/lib/types";
+import { PACKAGES, type PackageId, type Period, type MetodoPagamento, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO, PERIODOS, labelPeriodo, horasPeriodo, labelPeriodos, horasDosPeriodos, calcularPreco, periodosDaReserva, ordenarPeriodos, valorReserva } from "@/lib/types";
 import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
 import { Store, initStore } from "@/lib/store";
@@ -666,7 +666,7 @@ function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof St
         </div>
         <div className="mt-3 rounded-2xl bg-white/10 p-4">
           <div className="text-xs uppercase tracking-widest text-white/70">Valor</div>
-          <div className="font-display text-4xl text-accent">{formatKz(pkg.preco)}</div>
+          <div className="font-display text-4xl text-accent">{formatKz(valorReserva(reserva, pkg.preco))}</div>
         </div>
         <p className="mt-4 text-xs text-white/70">
           Guarde esta referência: é com ela que acede e gere o seu evento. A AGD também lhe envia este código por WhatsApp após validar o comprovativo.
