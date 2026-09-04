@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { PACKAGES, type PackageId, type Period, type MetodoPagamento, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO, PERIODOS, labelPeriodo, horasPeriodo } from "@/lib/types";
+import { PACKAGES, type PackageId, type Period, type MetodoPagamento, formatKz, TIPOS_EVENTO, CAPACIDADE_ESPACO, PERIODOS, labelPeriodo, horasPeriodo, labelPeriodos, horasDosPeriodos, calcularPreco, periodosDaReserva, ordenarPeriodos } from "@/lib/types";
 import { uploadEventAsset } from "@/lib/upload";
 import { toast } from "sonner";
 import { Store, initStore } from "@/lib/store";
@@ -27,7 +27,7 @@ function Index() {
   const [step, setStep] = useState<Step>(1);
   const [pacote, setPacote] = useState<PackageId | null>(null);
   const [data, setData] = useState<Date | null>(null);
-  const [periodo, setPeriodo] = useState<Period | null>(null);
+  const [periodos, setPeriodos] = useState<Period[]>([]);
   const espacosAtivos = Store.espacosAtivos();
   const [espacoId, setEspacoId] = useState<string>("");
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", tipo_evento: "", tipo_evento_outro: "", max_convidados: "" });
@@ -48,12 +48,12 @@ function Index() {
 
   const podeAvancar =
     (step === 1 && pacote) ||
-    (step === 2 && data && periodo) ||
+    (step === 2 && data && periodos.length > 0) ||
     (step === 3 && form.nome && form.email && form.telefone && tipoFinal) ||
     (step === 4 && !!metodo && !!comprovativoUrl);
 
   async function finalizar() {
-    if (!pacote || !data || !periodo || criando || !tipoFinal || !metodo || !comprovativoUrl) return;
+    if (!pacote || !data || periodos.length === 0 || criando || !tipoFinal || !metodo || !comprovativoUrl) return;
     setCriando(true);
     try {
       const maxC = parseInt(form.max_convidados, 10);
@@ -64,7 +64,11 @@ function Index() {
         tipo_evento: tipoFinal,
         pacote_id: pacote,
         data_evento: format(data, "yyyy-MM-dd"),
-        periodo,
+        periodo: periodos[0],
+        periodos: ordenarPeriodos(periodos),
+        hora_inicio: horasDosPeriodos(periodos).inicio,
+        hora_fim: horasDosPeriodos(periodos).fim,
+        valor_total: calcularPreco((PACKAGES.find((p) => p.id === pacote) ?? PACKAGES[0]).preco, periodos).total,
         espaco_id: espacoId || null,
         max_convidados: Number.isFinite(maxC) && maxC > 0 ? Math.min(maxC, CAPACIDADE_ESPACO) : undefined,
         metodo_pagamento: metodo,
@@ -127,7 +131,7 @@ function Index() {
                 </label>
                 <select
                   value={espacoId}
-                  onChange={(e) => { setEspacoId(e.target.value); setData(null); setPeriodo(null); }}
+                  onChange={(e) => { setEspacoId(e.target.value); setData(null); setPeriodos([]); }}
                   className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm outline-none"
                 >
                   {espacosAtivos.map((e) => (
@@ -139,9 +143,10 @@ function Index() {
             <StepCalendario
               data={data}
               setData={setData}
-              periodo={periodo}
-              setPeriodo={setPeriodo}
+              periodos={periodos}
+              setPeriodos={setPeriodos}
               espacoId={espacoId || null}
+              precoPacote={(PACKAGES.find((p) => p.id === pacote) ?? PACKAGES[0]).preco}
             />
           </div>
         )}
@@ -149,6 +154,7 @@ function Index() {
         {step === 4 && !reservaCriada && (
           <StepPagamento
             pkg={PACKAGES.find((p) => p.id === pacote) ?? PACKAGES[0]}
+            periodos={periodos}
             metodo={metodo}
             setMetodo={setMetodo}
             comprovativoUrl={comprovativoUrl}
@@ -253,11 +259,12 @@ function StepPacotes({ pacote, setPacote }: { pacote: PackageId | null; setPacot
 }
 
 function StepCalendario({
-  data, setData, periodo, setPeriodo, espacoId,
+  data, setData, periodos, setPeriodos, espacoId, precoPacote,
 }: {
   data: Date | null; setData: (d: Date) => void;
-  periodo: Period | null; setPeriodo: (p: Period | null) => void;
+  periodos: Period[]; setPeriodos: (p: Period[]) => void;
   espacoId?: string | null;
+  precoPacote: number;
 }) {
   const [cursor, setCursor] = useState(new Date());
   const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
@@ -266,6 +273,16 @@ function StepCalendario({
   const today = new Date();
 
   const ocupados = useMemo(() => (data ? Store.periodosOcupados(format(data, "yyyy-MM-dd"), espacoId ?? undefined) : []), [data, espacoId]);
+
+  const diaInteiro = periodos.length >= PERIODOS.length;
+  const todosLivres = PERIODOS.every((p) => !ocupados.includes(p.value));
+  const preco = calcularPreco(precoPacote, periodos);
+
+  function togglePeriodo(p: Period) {
+    if (periodos.includes(p)) setPeriodos(periodos.filter((x) => x !== p));
+    else if (diaInteiro) setPeriodos([p]);
+    else if (periodos.length < 2) setPeriodos(ordenarPeriodos([...periodos, p]));
+  }
 
   function diaTotalmenteOcupado(d: Date) {
     const ps = Store.periodosOcupados(format(d, "yyyy-MM-dd"), espacoId ?? undefined);
@@ -294,7 +311,7 @@ function StepCalendario({
               <button
                 key={d.toISOString()}
                 disabled={disabled}
-                onClick={() => { setData(d); setPeriodo(null); }}
+                onClick={() => { setData(d); setPeriodos([]); }}
                 className={`relative aspect-square rounded-xl text-sm transition
                   ${outside ? "text-muted-foreground/40" : "text-foreground"}
                   ${selected ? "bg-navy text-primary-foreground" : disabled ? "bg-white/30 line-through opacity-50" : "bg-white/70 hover:bg-white"}
@@ -318,15 +335,21 @@ function StepCalendario({
           {data ? format(data, "EEEE, d 'de' MMMM", { locale: pt }) : "Escolha primeiro uma data"}
         </div>
 
+        <p className="mt-3 text-xs text-muted-foreground">
+          Pode escolher até 2 períodos, ou "Todo o dia" (3 períodos) com 10% de desconto.
+        </p>
+
         <div className="mt-5 grid gap-3">
           {PERIODOS.map((p) => {
             const ocupado = ocupados.includes(p.value);
+            const activo = periodos.includes(p.value);
+            const limite = !activo && periodos.length >= 2 && !diaInteiro;
             return (
               <PeriodButton
                 key={p.value}
-                active={periodo === p.value}
-                disabled={!data || ocupado}
-                onClick={() => setPeriodo(p.value)}
+                active={activo}
+                disabled={!data || ocupado || limite}
+                onClick={() => togglePeriodo(p.value)}
                 icon={p.value === "manha" ? <Sun className="h-5 w-5" /> : p.value === "tarde" ? <Sunset className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 title={p.label}
                 hint={p.hint}
@@ -334,6 +357,47 @@ function StepCalendario({
               />
             );
           })}
+
+          <button
+            disabled={!data || !todosLivres}
+            onClick={() => setPeriodos(diaInteiro ? [] : PERIODOS.map((p) => p.value))}
+            className={`flex w-full items-center justify-between rounded-2xl p-4 text-left transition
+              ${diaInteiro ? "bg-navy text-primary-foreground" : (!data || !todosLivres) ? "bg-white/40 opacity-60" : "bg-white/80 hover:bg-white"}`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`grid h-10 w-10 place-items-center rounded-xl ${diaInteiro ? "bg-white/15" : "bg-secondary"}`}><Sparkles className="h-5 w-5" /></div>
+              <div>
+                <div className="font-medium">Todo o dia</div>
+                <div className={`text-xs ${diaInteiro ? "text-white/70" : "text-muted-foreground"}`}>08h00 — 23h00 · 10% de desconto</div>
+              </div>
+            </div>
+            {!todosLivres && <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] text-destructive">Indisponível</span>}
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-2xl bg-navy p-4 text-primary-foreground">
+          <div className="text-[11px] uppercase tracking-widest text-white/60">Valor estimado</div>
+          {periodos.length === 0 ? (
+            <div className="mt-1 text-sm text-white/70">Escolha pelo menos um período para ver o valor.</div>
+          ) : (
+            <>
+              <div className="mt-1 flex items-baseline justify-between text-sm text-white/80">
+                <span>{formatKz(precoPacote)} × {preco.n} período{preco.n > 1 ? "s" : ""}</span>
+                <span>{formatKz(preco.bruto)}</span>
+              </div>
+              {preco.diaInteiro && (
+                <div className="mt-1 flex items-baseline justify-between text-sm text-accent">
+                  <span>Desconto todo o dia (10%)</span>
+                  <span>− {formatKz(preco.desconto)}</span>
+                </div>
+              )}
+              <div className="mt-2 flex items-baseline justify-between border-t border-white/15 pt-2">
+                <span className="text-xs uppercase tracking-widest text-white/60">{labelPeriodos(periodos)}</span>
+                <span className="font-display text-2xl text-accent">{formatKz(preco.total)}</span>
+              </div>
+              <div className="mt-1 text-[11px] text-white/60">Horário: {horasDosPeriodos(periodos).hint}</div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -454,9 +518,10 @@ function StepDetalhes({ form, setForm }: { form: FormState; setForm: (f: FormSta
 }
 
 function StepPagamento({
-  pkg, metodo, setMetodo, comprovativoUrl, setComprovativoUrl, tempId,
+  pkg, periodos, metodo, setMetodo, comprovativoUrl, setComprovativoUrl, tempId,
 }: {
   pkg: (typeof PACKAGES)[number];
+  periodos: Period[];
   metodo: MetodoPagamento | null;
   setMetodo: (m: MetodoPagamento) => void;
   comprovativoUrl: string;
@@ -464,6 +529,7 @@ function StepPagamento({
   tempId: string;
 }) {
   const cfg = Store.configPagamento();
+  const preco = calcularPreco(pkg.preco, periodos);
   const [enviando, setEnviando] = useState(false);
   const [nomeFicheiro, setNomeFicheiro] = useState("");
 
@@ -522,7 +588,12 @@ function StepPagamento({
 
       <div className="glass-dark rounded-2xl p-6">
         <div className="text-xs uppercase tracking-widest text-accent">Valor a pagar</div>
-        <div className="font-display text-4xl text-accent">{formatKz(pkg.preco)}</div>
+        <div className="font-display text-4xl text-accent">{formatKz(preco.total)}</div>
+        <div className="mt-2 space-y-1 text-xs text-white/70">
+          <div className="flex justify-between"><span>{pkg.nome} · {formatKz(pkg.preco)} × {preco.n} período{preco.n > 1 ? "s" : ""}</span><span>{formatKz(preco.bruto)}</span></div>
+          {preco.diaInteiro && <div className="flex justify-between text-accent"><span>Desconto todo o dia (10%)</span><span>− {formatKz(preco.desconto)}</span></div>}
+          <div className="text-white/50">{labelPeriodos(periodos)} · {horasDosPeriodos(periodos).hint}</div>
+        </div>
 
         <div className="mt-5 rounded-2xl border border-dashed border-white/25 p-5 text-center">
           <Upload className="mx-auto h-6 w-6 text-white/70" />
@@ -581,7 +652,7 @@ function StepCheckout({ reserva, onIr }: { reserva: Awaited<ReturnType<typeof St
           <Row k="Cliente" v={reserva.cliente_nome} />
           <Row k="Evento" v={reserva.tipo_evento} />
           <Row k="Data" v={format(new Date(reserva.data_evento), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })} />
-          <Row k="Período" v={`${labelPeriodo(reserva.periodo)} (${horasPeriodo(reserva.periodo).hint})`} />
+          <Row k="Período" v={`${labelPeriodos(periodosDaReserva(reserva))} (${horasDosPeriodos(periodosDaReserva(reserva)).hint})`} />
           <Row k="Pagamento" v={reserva.metodo_pagamento === "express" ? "Multicaixa Express" : "Transferência (IBAN)"} />
           <Row k="Comprovativo" v={reserva.comprovativo_url ? "Enviado" : "Em falta"} />
           <Row k="Status" v={<span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">Aguardando validação</span>} />
