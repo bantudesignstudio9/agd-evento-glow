@@ -6,7 +6,7 @@ import { Store } from "@/lib/store";
 import {
   PACKAGES, formatKz, CAPACIDADE_ESPACO, DEFAULT_DESIGN, DEFAULT_LOCAL,
   COR_PRESETS, FONT_OPTIONS, labelTipoEvento,
-  labelPeriodo, horasPeriodo,
+  labelPeriodo, horasPeriodo, labelPeriodos, horasDosPeriodos, periodosDaReserva, valorReserva, calcularPreco,
   tipoEventoUsaMesas, tipoEventoUsaPoltrona, tipoEventoUsaTurma, tipoEventoUsaSessoes,
   type DesignConvite, type Reserva, type Convidado, type ConvidadoDetalhes, type Sessao,
 } from "@/lib/types";
@@ -47,6 +47,17 @@ function Dashboard() {
   const reserva = useMemo(() => (query ? Store.getReservaByRef(query) : undefined), [query]);
 
   useEffect(() => { if (ref) setQuery(ref); }, [ref]);
+
+  // Mantém o painel sincronizado com o servidor (ex.: admin muda plano ou confirma pagamento)
+  useEffect(() => {
+    let vivo = true;
+    const sync = () => { if (vivo && document.visibilityState === "visible") void Store.refresh(); };
+    void Store.ready().then(sync);
+    const t = setInterval(sync, 20000);
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => { vivo = false; clearInterval(t); window.removeEventListener("focus", sync); document.removeEventListener("visibilitychange", sync); };
+  }, []);
 
   return (
     <main className="mx-auto mt-10 w-[min(1200px,95%)] pb-16">
@@ -102,6 +113,13 @@ function ClientDashboard({ reserva }: { reserva: Reserva }) {
     { id: "design", label: "Designer", icon: <Palette className="h-4 w-4" />, locked: !pago, ouroOnly: true },
     { id: "convites", label: "Convites", icon: <Mail className="h-4 w-4" />, locked: !pago, ouroOnly: true },
   ] satisfies TabDef[]).filter((t) => t.show !== false);
+
+  // Se o admin alterar o plano/estado, uma aba activa pode deixar de estar disponível
+  useEffect(() => {
+    const actual = tabs.find((t) => t.id === tab);
+    const indisponivel = !actual || actual.locked || (actual.ouroOnly && !isOuro);
+    if (indisponivel) setTab("resumo");
+  }, [tab, pago, isOuro, usaSessoes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="mt-8">
@@ -391,6 +409,8 @@ function SessaoRow({ s, total }: { s: Sessao; total: number }) {
 function ResumoTab({ reserva }: { reserva: Reserva }) {
   const pkg = PACKAGES.find((p) => p.id === reserva.pacote_id)!;
   const pago = reserva.status === "Pago";
+  const ps = periodosDaReserva(reserva);
+  const preco = { ...calcularPreco(pkg.preco, ps), total: valorReserva(reserva, pkg.preco) };
 
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_1.1fr]">
@@ -405,8 +425,9 @@ function ResumoTab({ reserva }: { reserva: Reserva }) {
           <Row k="Telefone" v={reserva.cliente_telefone} />
           <Row k="Tipo de evento" v={labelTipoEvento(reserva.tipo_evento)} />
           <Row k="Data" v={format(new Date(reserva.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
-          <Row k="Período" v={`${labelPeriodo(reserva.periodo)} (${horasPeriodo(reserva.periodo).hint})`} />
-          <Row k="Valor" v={formatKz(pkg.preco)} />
+          <Row k="Período" v={`${labelPeriodos(ps)} (${horasDosPeriodos(ps).hint})`} />
+          <Row k="Valor" v={formatKz(preco.total)} />
+          <Row k="Cálculo" v={`${formatKz(pkg.preco)} × ${preco.n} período${preco.n > 1 ? "s" : ""}${preco.diaInteiro ? ` − 10% (${formatKz(preco.desconto)})` : ""}`} />
         </dl>
       </div>
 
@@ -420,7 +441,7 @@ function ResumoTab({ reserva }: { reserva: Reserva }) {
           </p>
           <div className="mt-6 grid grid-cols-2 gap-4">
             <Stat label="Código de gestão" value={reserva.referencia_pagamento} />
-            <Stat label="Montante" value={formatKz(pkg.preco)} />
+            <Stat label="Montante" value={formatKz(preco.total)} />
             <Stat label="Método" value={reserva.metodo_pagamento === "express" ? "Multicaixa Express" : "Transferência (IBAN)"} />
             <Stat label="Comprovativo" value={reserva.comprovativo_url ? "Enviado" : "Em falta"} />
           </div>
@@ -461,8 +482,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 /* ---------------- DETALHES DO EVENTO ---------------- */
 function EventoTab({ reserva }: { reserva: Reserva }) {
   const [nome, setNome] = useState(reserva.evento_nome ?? "");
-  const [hi, setHi] = useState(reserva.hora_inicio ?? horasPeriodo(reserva.periodo).inicio);
-  const [hf, setHf] = useState(reserva.hora_fim ?? horasPeriodo(reserva.periodo).fim);
+  const [hi, setHi] = useState(reserva.hora_inicio ?? horasDosPeriodos(periodosDaReserva(reserva)).inicio);
+  const [hf, setHf] = useState(reserva.hora_fim ?? horasDosPeriodos(periodosDaReserva(reserva)).fim);
   const [msg, setMsg] = useState(reserva.mensagem_boas_vindas ?? "");
   const local = reserva.local_evento ?? DEFAULT_LOCAL;
   const [endereco, setEndereco] = useState(local.endereco);
@@ -1192,7 +1213,7 @@ function ConvitePreview({
           {format(new Date(reserva.data_evento), "d MMM yyyy", { locale: pt })}
         </div>
         <div className="text-[10px]" style={{ color: subtle }}>
-          {reserva.hora_inicio && reserva.hora_fim ? `${reserva.hora_inicio} — ${reserva.hora_fim}` : labelPeriodo(reserva.periodo)}
+          {reserva.hora_inicio && reserva.hora_fim ? `${reserva.hora_inicio} — ${reserva.hora_fim}` : labelPeriodos(periodosDaReserva(reserva))}
         </div>
 
         <div className="mt-auto pt-3">
