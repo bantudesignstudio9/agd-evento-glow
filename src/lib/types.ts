@@ -121,6 +121,8 @@ export interface Reserva {
   pacote_id: PackageId;
   data_evento: string;
   periodo: Period;
+  periodos?: Period[] | null;
+  valor_total?: number | null;
   status: Status;
   entidade_pagamento: string;
   referencia_pagamento: string;
