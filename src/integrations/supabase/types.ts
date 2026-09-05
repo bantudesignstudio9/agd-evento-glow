@@ -172,6 +172,42 @@ export type Database = {
         }
         Relationships: []
       }
+      planos: {
+        Row: {
+          activo: boolean
+          criado_em: string
+          descricao: string[]
+          id: string
+          nome: string
+          ordem: number
+          permite_convites_digitais: boolean
+          preco: number
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          criado_em?: string
+          descricao?: string[]
+          id: string
+          nome: string
+          ordem?: number
+          permite_convites_digitais?: boolean
+          preco?: number
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          criado_em?: string
+          descricao?: string[]
+          id?: string
+          nome?: string
+          ordem?: number
+          permite_convites_digitais?: boolean
+          preco?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       presencas: {
         Row: {
           convidado_id: string
@@ -645,6 +681,56 @@ export type Database = {
           telefone?: string | null
         }
         Relationships: []
+      }
+      transacoes: {
+        Row: {
+          categoria: string
+          criado_em: string
+          data: string
+          descricao: string
+          id: string
+          metodo: string | null
+          notas: string | null
+          reserva_id: string | null
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string
+          criado_em?: string
+          data?: string
+          descricao?: string
+          id?: string
+          metodo?: string | null
+          notas?: string | null
+          reserva_id?: string | null
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string
+          criado_em?: string
+          data?: string
+          descricao?: string
+          id?: string
+          metodo?: string | null
+          notas?: string | null
+          reserva_id?: string | null
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transacoes_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
