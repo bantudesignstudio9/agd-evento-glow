@@ -4,7 +4,7 @@ import type {
   Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
   ConfigPagamento,
 } from "./types";
-import { DEFAULT_CONFIG_PAGAMENTO, periodosDaReserva } from "./types";
+import { DEFAULT_CONFIG_PAGAMENTO, periodosDaReserva, calcularPreco, PACKAGES } from "./types";
 import {
   sfCriarReserva, sfAtualizarReserva, sfRemoverReserva,
   sfAddConvidado, sfAtualizarConvidado, sfRemoverConvidado,
@@ -174,7 +174,15 @@ export const Store = {
     await Store.atualizarReserva(id, { status } as Partial<Reserva>);
   },
 
-  async atualizarReserva(id: string, patch: Partial<Reserva>) {
+  async atualizarReserva(id: string, patchIn: Partial<Reserva>) {
+    let patch = patchIn;
+    // Se mudar o pacote ou os períodos, recalcula sempre o valor a pagar
+    const atual = _reservas.find((r) => r.id === id);
+    if (atual && (patch.pacote_id !== undefined || patch.periodos !== undefined || patch.periodo !== undefined)) {
+      const merged = { ...atual, ...patch } as Reserva;
+      const pkg = PACKAGES.find((p) => p.id === merged.pacote_id);
+      if (pkg) patch = { ...patch, valor_total: calcularPreco(pkg.preco, periodosDaReserva(merged)).total };
+    }
     const anterior = _reservas;
     _reservas = _reservas.map((r) => (r.id === id ? { ...r, ...patch } : r));
     emit();
