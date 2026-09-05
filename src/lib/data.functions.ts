@@ -309,3 +309,90 @@ export const sfUploadAsset = createServerFn({ method: "POST" })
     return { url: pub.publicUrl, path };
   });
 
+
+// ---------- PLANOS (admin) ----------
+export const sfListarPlanos = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const sb = await admin();
+    const { data, error } = await sb.from("planos").select("*").order("ordem");
+    throwIf(error, "Falha ao listar planos");
+    return (data ?? []) as never;
+  });
+
+export const sfGuardarPlano = createServerFn({ method: "POST" })
+  .inputValidator((d: { input: Record<string, unknown> }) => d)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await (supabaseAdmin as never as {
+      from: (t: string) => { upsert: (v: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: { message: string } | null }> } } };
+    }).from("planos").upsert(data.input).select().single();
+    throwIf(error, "Falha ao guardar plano");
+    return row as never;
+  });
+
+export const sfRemoverPlano = createServerFn({ method: "POST" })
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { error } = await sb.from("planos").delete().eq("id", data.id);
+    throwIf(error, "Falha ao remover plano");
+    return { ok: true };
+  });
+
+// ---------- TRANSACOES (financeiro, admin) ----------
+export const sfListarTransacoes = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const sb = await admin();
+    const { data, error } = await sb.from("transacoes").select("*").order("data", { ascending: false });
+    throwIf(error, "Falha ao listar transacções");
+    return (data ?? []) as never;
+  });
+
+export const sfCriarTransacao = createServerFn({ method: "POST" })
+  .inputValidator((d: { input: Record<string, unknown> }) => d)
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { data: row, error } = await sb.from("transacoes").insert(data.input).select().single();
+    throwIf(error, "Falha ao registar movimento");
+    return row as never;
+  });
+
+export const sfAtualizarTransacao = createServerFn({ method: "POST" })
+  .inputValidator((d: { id: string; patch: Record<string, unknown> }) => d)
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { error } = await sb.from("transacoes").update(data.patch).eq("id", data.id);
+    throwIf(error, "Falha ao actualizar movimento");
+    return { ok: true };
+  });
+
+export const sfRemoverTransacao = createServerFn({ method: "POST" })
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { error } = await sb.from("transacoes").delete().eq("id", data.id);
+    throwIf(error, "Falha ao remover movimento");
+    return { ok: true };
+  });
+
+// ---------- IMPORTAÇÃO EM MASSA (Excel) ----------
+export const sfImportarReservas = createServerFn({ method: "POST" })
+  .inputValidator((d: { rows: Record<string, unknown>[] }) => d)
+  .handler(async ({ data }) => {
+    if (data.rows.length === 0) return { criadas: 0, refs: [] as string[] };
+    const sb = await admin();
+    const payload = data.rows.map((r) => ({
+      ...r,
+      status: (r["status"] as string) || "Pendente",
+      entidade_pagamento: String(99000 + Math.floor(Math.random() * 999)),
+      referencia_pagamento: Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join(""),
+    }));
+    const { data: rows, error } = await (sb.from("reservas").insert(payload) as unknown as {
+      select: () => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+    }).select();
+    throwIf(error, "Falha ao importar reservas");
+    return {
+      criadas: (rows ?? []).length,
+      refs: ((rows ?? []) as Record<string, unknown>[]).map((r) => String(r["referencia_pagamento"])),
+    };
+  });

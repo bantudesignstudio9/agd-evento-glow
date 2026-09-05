@@ -1,4 +1,4 @@
-export type PackageId = "prata" | "ouro";
+export type PackageId = string;
 export type Period = "manha" | "tarde" | "noite";
 
 export const PERIODOS: { value: Period; label: string; inicio: string; fim: string; hint: string }[] = [
@@ -323,7 +323,7 @@ export function tipoEventoUsaSessoes(tipo: string): boolean {
 
 export const CAPACIDADE_ESPACO = 150;
 
-export const PACKAGES: Package[] = [
+export const PACOTES_DEFAULT: Package[] = [
   {
     id: "prata",
     nome: "Plano Prata",
@@ -346,6 +346,49 @@ export const PACKAGES: Package[] = [
     permite_convites_digitais: true,
   },
 ];
+
+/** Planos activos (sincronizados da base de dados por Store.ready()). */
+export let PACKAGES: Package[] = [...PACOTES_DEFAULT];
+export function setPacotes(ps: Package[]) {
+  if (ps.length > 0) PACKAGES = ps;
+}
+export function getPacote(id: string): Package | undefined {
+  return PACKAGES.find((p) => p.id === id) ?? PACOTES_DEFAULT.find((p) => p.id === id);
+}
+
+// ---------- FINANCEIRO ----------
+export type TipoTransacao = "receita" | "despesa";
+
+export interface Transacao {
+  id: string;
+  tipo: TipoTransacao;
+  categoria: string;
+  descricao: string;
+  valor: number;
+  data: string;
+  metodo?: string | null;
+  reserva_id?: string | null;
+  notas?: string | null;
+  criado_em: string;
+}
+
+export interface Plano extends Package {
+  activo: boolean;
+  ordem: number;
+}
+
+export const CATEGORIAS_RECEITA = [
+  "Reserva de espaço", "Serviços extra", "Aluguer de equipamento",
+  "Patrocínio", "Bilheteira", "Outros",
+] as const;
+
+export const CATEGORIAS_DESPESA = [
+  "Fornecedores", "Salários & Pessoal", "Energia & Água", "Manutenção",
+  "Limpeza", "Marketing", "Transporte", "Impostos & Taxas",
+  "Equipamento", "Segurança", "Outros",
+] as const;
+
+export const METODOS_FINANCEIROS = ["Transferência", "Multicaixa Express", "Numerário", "TPA", "Outro"] as const;
 
 export const FONT_OPTIONS = [
   { label: "Playfair Display", value: "Playfair Display" },
