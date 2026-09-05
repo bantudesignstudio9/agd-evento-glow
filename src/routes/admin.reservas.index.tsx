@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { PACKAGES, formatKz, PERIODOS, labelPeriodo, type Reserva, type PackageId, type Period } from "@/lib/types";
+import { PACKAGES, formatKz, PERIODOS, labelPeriodo, labelPeriodos, periodosDaReserva, valorReserva, type Reserva, type PackageId, type Period } from "@/lib/types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { CheckCircle2, Plus, Trash2, X, XCircle, Pencil, Save, MessageCircle } from "lucide-react";
@@ -57,7 +57,7 @@ function AdminReservas() {
                 <tr key={r.id} onClick={() => setSelectedId(r.id)}
                     className={`cursor-pointer border-t border-border/60 transition hover:bg-white/60 ${selectedId === r.id ? "bg-white/80" : "bg-white/30"}`}>
                   <td className="p-3"><div className="font-medium">{r.cliente_nome}</div><div className="text-xs text-muted-foreground">{r.cliente_email}</div></td>
-                  <td className="p-3">{format(new Date(r.data_evento), "dd/MM/yyyy", { locale: pt })}<div className="text-xs text-muted-foreground">{labelPeriodo(r.periodo)}</div></td>
+                  <td className="p-3">{format(new Date(r.data_evento), "dd/MM/yyyy", { locale: pt })}<div className="text-xs text-muted-foreground">{labelPeriodos(periodosDaReserva(r))}</div></td>
                   <td className="p-3">{PACKAGES.find((p) => p.id === r.pacote_id)?.nome}</td>
                   <td className="p-3"><StatusBadge status={r.status} /></td>
                 </tr>
@@ -159,9 +159,9 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
           <Row k="E-mail" v={r.cliente_email} />
           <Row k="Telefone" v={r.cliente_telefone} />
           <Row k="Evento" v={r.tipo_evento} />
-          <Row k="Pacote" v={`${pkg.nome} (${formatKz(pkg.preco)})`} />
+          <Row k="Pacote" v={`${pkg.nome} · ${labelPeriodos(periodosDaReserva(r))} — ${formatKz(valorReserva(r, pkg.preco))}`} />
           <Row k="Data" v={format(new Date(r.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
-          <Row k="Período" v={labelPeriodo(r.periodo)} />
+          <Row k="Período" v={labelPeriodos(periodosDaReserva(r))} />
           <Row k="Pagamento" v={r.metodo_pagamento === "express" ? "Multicaixa Express" : r.metodo_pagamento === "iban" ? "Transferência (IBAN)" : "—"} />
           <Row k="Comprovativo" v={r.comprovativo_url
             ? <a href={r.comprovativo_url} target="_blank" rel="noreferrer" className="text-navy underline">Ver ficheiro</a>
