@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { PACKAGES, TIPOS_EVENTO, formatKz, PERIODOS, type Period, type PackageId } from "@/lib/types";
+import { PACKAGES, TIPOS_EVENTO, formatKz, PERIODOS, labelPeriodos, periodosDaReserva, calcularPreco, ordenarPeriodos, horasDosPeriodos, type Period, type PackageId } from "@/lib/types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { ArrowLeft, AlertTriangle, Save, History, Bell } from "lucide-react";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/admin/reservas/$id/editar")({
 
 type FormState = {
   cliente_nome: string; cliente_email: string; cliente_telefone: string;
-  tipo_evento: string; pacote_id: string; data_evento: string; periodo: string;
+  tipo_evento: string; pacote_id: string; data_evento: string; periodo: string; periodos: Period[];
   hora_inicio: string; hora_fim: string; evento_nome: string;
   mensagem_boas_vindas: string; max_convidados: number; espaco_id: string;
 };
@@ -46,6 +46,7 @@ function EditarReserva() {
       pacote_id: r.pacote_id,
       data_evento: r.data_evento,
       periodo: r.periodo,
+      periodos: periodosDaReserva(r),
       hora_inicio: r.hora_inicio ?? "",
       hora_fim: r.hora_fim ?? "",
       evento_nome: r.evento_nome ?? "",
@@ -69,11 +70,14 @@ function EditarReserva() {
   const aviso48h = horasAteEvento < 48 && horasAteEvento > 0;
 
   // Detecta conflitos com outras reservas no mesmo espaço/data/período
+  const precoPacote = (PACKAGES.find((p) => p.id === form.pacote_id) ?? PACKAGES[0]).preco;
+  const precoCalc = calcularPreco(precoPacote, form.periodos);
+
   const dataMudou = form.data_evento !== r.data_evento;
-  const periodoMudou = form.periodo !== r.periodo;
+  const periodoMudou = labelPeriodos(form.periodos) !== labelPeriodos(periodosDaReserva(r));
   const espacoMudou = (form.espaco_id || null) !== (r.espaco_id ?? null);
   const conflito = (dataMudou || periodoMudou || espacoMudou) && Store.reservas().some((x) =>
-    x.id !== r.id && x.status !== "Cancelado" && x.data_evento === form.data_evento && x.periodo === form.periodo && (x.espaco_id ?? null) === (form.espaco_id || null)
+    x.id !== r.id && x.status !== "Cancelado" && x.data_evento === form.data_evento && periodosDaReserva(x).some((p) => form.periodos.includes(p)) && (x.espaco_id ?? null) === (form.espaco_id || null)
   );
 
   async function salvar() {
@@ -85,7 +89,8 @@ function EditarReserva() {
       const patch = {
         ...form,
         pacote_id: form.pacote_id as PackageId,
-        periodo: form.periodo as Period,
+        periodo: (form.periodos[0] ?? form.periodo) as Period,
+        periodos: ordenarPeriodos(form.periodos),
         hora_inicio: form.hora_inicio || undefined,
         hora_fim: form.hora_fim || undefined,
         evento_nome: form.evento_nome || undefined,
@@ -141,10 +146,36 @@ function EditarReserva() {
             </select>
           </F>
           <F label="Data"><input type="date" value={form.data_evento} onChange={(e) => setForm({ ...form, data_evento: e.target.value })} className="inp" /></F>
-          <F label="Período">
-            <select value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value as Period })} className="inp">
-              {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </select>
+          <F label="Períodos (até 2, ou todo o dia)">
+            <div className="flex flex-wrap gap-2">
+              {PERIODOS.map((p) => {
+                const on = form.periodos.includes(p.value);
+                const diaInteiro = form.periodos.length >= PERIODOS.length;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => {
+                      const has = form.periodos.includes(p.value);
+                      const next = has
+                        ? form.periodos.filter((x) => x !== p.value)
+                        : diaInteiro ? [p.value] : form.periodos.length < 2 ? ordenarPeriodos([...form.periodos, p.value]) : form.periodos;
+                      setForm({ ...form, periodos: next, periodo: next[0] ?? form.periodo });
+                    }}
+                    className={`rounded-xl px-3 py-1.5 text-sm ${on ? "btn-navy" : "border border-border bg-white"}`}
+                  >{p.label}</button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => {
+                  const todos = PERIODOS.map((p) => p.value);
+                  const next = form.periodos.length >= todos.length ? [todos[0]] : todos;
+                  setForm({ ...form, periodos: next, periodo: next[0] });
+                }}
+                className={`rounded-xl px-3 py-1.5 text-sm ${form.periodos.length >= PERIODOS.length ? "btn-gold" : "border border-border bg-white"}`}
+              >Todo o dia (-10%)</button>
+            </div>
           </F>
           <F label="Hora início"><input type="time" value={form.hora_inicio} onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} className="inp" /></F>
           <F label="Hora fim"><input type="time" value={form.hora_fim} onChange={(e) => setForm({ ...form, hora_fim: e.target.value })} className="inp" /></F>
@@ -156,6 +187,18 @@ function EditarReserva() {
           </F>
           <F label="Máx. convidados"><input type="number" min={0} value={form.max_convidados} onChange={(e) => setForm({ ...form, max_convidados: Number(e.target.value) })} className="inp" /></F>
           <F label="Mensagem boas-vindas" full><textarea value={form.mensagem_boas_vindas} onChange={(e) => setForm({ ...form, mensagem_boas_vindas: e.target.value })} className="inp min-h-[60px]" /></F>
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-navy/95 p-4 text-primary-foreground">
+          <div className="text-[11px] uppercase tracking-widest text-white/60">Valor a pagar (recalculado)</div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-sm text-white/80">
+              {formatKz(precoPacote)} × {precoCalc.n} período{precoCalc.n > 1 ? "s" : ""}
+              {precoCalc.diaInteiro ? ` − 10% (${formatKz(precoCalc.desconto)})` : ""} · {labelPeriodos(form.periodos)}
+            </span>
+            <span className="font-display text-2xl text-accent">{formatKz(precoCalc.total)}</span>
+          </div>
+          <div className="mt-1 text-[11px] text-white/60">Horário sugerido: {horasDosPeriodos(form.periodos).hint}</div>
         </div>
 
         {conflito && (
