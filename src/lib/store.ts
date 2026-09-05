@@ -4,7 +4,7 @@ import type {
   Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
   ConfigPagamento,
 } from "./types";
-import { DEFAULT_CONFIG_PAGAMENTO } from "./types";
+import { DEFAULT_CONFIG_PAGAMENTO, periodosDaReserva } from "./types";
 import {
   sfCriarReserva, sfAtualizarReserva, sfRemoverReserva,
   sfAddConvidado, sfAtualizarConvidado, sfRemoverConvidado,
@@ -156,7 +156,7 @@ export const Store = {
         r.status !== "Cancelado" &&
         (!espaco_id || (r.espaco_id ?? null) === espaco_id),
       )
-      .map((r) => r.periodo),
+      .flatMap((r) => periodosDaReserva(r)),
 
   async criarReserva(
     input: Omit<Reserva, "id" | "status" | "entidade_pagamento" | "referencia_pagamento" | "criado_em">,

@@ -123,7 +123,7 @@ function ConvitePage() {
             <div className="text-sm" style={{ color: subtle }}>
               {reserva.hora_inicio && reserva.hora_fim
                 ? `${reserva.hora_inicio} — ${reserva.hora_fim}`
-                : labelPeriodo(reserva.periodo)}
+                : labelPeriodos(periodosDaReserva(reserva))}
             </div>
 
             {det && (det.mesa || det.lugar || det.area || det.turma) && (
@@ -159,7 +159,7 @@ function ConvitePage() {
               <Info icon={<Clock className="h-4 w-4 text-accent" />} k="Horário">
                 {reserva.hora_inicio && reserva.hora_fim
                   ? `${reserva.hora_inicio} — ${reserva.hora_fim}`
-                  : horasPeriodo(reserva.periodo).hint}
+                  : horasDosPeriodos(periodosDaReserva(reserva)).hint}
               </Info>
               <Info icon={<MapPin className="h-4 w-4 text-accent" />} k="Local">
                 {local.endereco}

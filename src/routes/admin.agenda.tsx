@@ -165,7 +165,7 @@ function Drawer({ r, onClose }: { r: Reserva; onClose: () => void }) {
         </div>
 
         <div className="space-y-2 text-sm">
-          <Row icon={<Calendar className="h-4 w-4" />}>{format(new Date(r.data_evento), "EEEE, d 'de' MMMM yyyy", { locale: pt })} · {labelPeriodo(r.periodo)}</Row>
+          <Row icon={<Calendar className="h-4 w-4" />}>{format(new Date(r.data_evento), "EEEE, d 'de' MMMM yyyy", { locale: pt })} · {labelPeriodos(periodosDaReserva(r))}</Row>
           <Row>Tipo: <b>{r.tipo_evento}</b></Row>
           {pkg && <Row>Pacote: <b>{pkg.nome}</b> ({formatKz(pkg.preco)})</Row>}
           {espaco && <Row icon={<MapPin className="h-4 w-4" />}>{espaco.nome}</Row>}

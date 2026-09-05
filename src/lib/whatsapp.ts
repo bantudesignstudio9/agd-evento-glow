@@ -1,5 +1,5 @@
 import type { Convidado, Reserva } from "./types";
-import { labelPeriodos } from "./types";
+import { labelPeriodos, periodosDaReserva } from "./types";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 

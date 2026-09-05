@@ -48,7 +48,7 @@ function AdminDashboard() {
                 <div>
                   <div className="font-medium text-foreground">{r.cliente_nome} · {r.tipo_evento}</div>
                   <div className="text-xs text-muted-foreground">
-                    {format(new Date(r.data_evento), "EEEE, d 'de' MMMM", { locale: pt })} · {labelPeriodo(r.periodo)}
+                    {format(new Date(r.data_evento), "EEEE, d 'de' MMMM", { locale: pt })} · {labelPeriodos(periodosDaReserva(r))}
                   </div>
                 </div>
                 <span className="rounded-full bg-secondary px-3 py-1 text-xs text-navy">{PACKAGES.find((p) => p.id === r.pacote_id)?.nome}</span>
