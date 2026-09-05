@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Store } from "@/lib/store";
 import { useStoreVersion } from "@/hooks/useStore";
-import { formatKz, type Reserva, type Period, labelPeriodo, horasPeriodo } from "@/lib/types";
+import { formatKz, type Reserva, type Period, labelPeriodos, periodosDaReserva, horasDosPeriodos, horasPeriodo, valorReserva } from "@/lib/types";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
