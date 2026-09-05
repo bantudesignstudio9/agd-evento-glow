@@ -1,4 +1,4 @@
-export type PackageId = "prata" | "ouro";
+export type PackageId = string;
 export type Period = "manha" | "tarde" | "noite";
 
 export const PERIODOS: { value: Period; label: string; inicio: string; fim: string; hint: string }[] = [
