@@ -42,7 +42,8 @@ function AdminAgenda() {
       .filter((r) => filtroEspaco === "todos" || (r.espaco_id ?? "") === filtroEspaco)
       .filter((r) => filtroEstado === "todos" || r.status === filtroEstado)
       .map((r) => {
-        const h = periodoToHoras(r.periodo);
+        const hp = horasDosPeriodos(periodosDaReserva(r));
+        const h = { start: `${hp.inicio}:00`, end: `${hp.fim}:00` };
         const cor = CORES_ESTADO[r.status] ?? CORES_ESTADO.Pendente;
         return {
           id: r.id,
@@ -167,7 +168,7 @@ function Drawer({ r, onClose }: { r: Reserva; onClose: () => void }) {
         <div className="space-y-2 text-sm">
           <Row icon={<Calendar className="h-4 w-4" />}>{format(new Date(r.data_evento), "EEEE, d 'de' MMMM yyyy", { locale: pt })} · {labelPeriodos(periodosDaReserva(r))}</Row>
           <Row>Tipo: <b>{r.tipo_evento}</b></Row>
-          {pkg && <Row>Pacote: <b>{pkg.nome}</b> ({formatKz(pkg.preco)})</Row>}
+          {pkg && <Row>Pacote: <b>{pkg.nome}</b> · {labelPeriodos(periodosDaReserva(r))} — <b>{formatKz(valorReserva(r, pkg.preco))}</b></Row>}
           {espaco && <Row icon={<MapPin className="h-4 w-4" />}>{espaco.nome}</Row>}
           <Row icon={<Users className="h-4 w-4" />}>{convidados} convidados</Row>
           <Row>Telefone: {r.cliente_telefone}</Row>

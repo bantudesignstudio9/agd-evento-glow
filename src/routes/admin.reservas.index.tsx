@@ -159,7 +159,7 @@ function DetalheReserva({ r, onClose }: { r: Reserva; onClose: () => void }) {
           <Row k="E-mail" v={r.cliente_email} />
           <Row k="Telefone" v={r.cliente_telefone} />
           <Row k="Evento" v={r.tipo_evento} />
-          <Row k="Pacote" v={`${pkg.nome} (${formatKz(pkg.preco)})`} />
+          <Row k="Pacote" v={`${pkg.nome} · ${labelPeriodos(periodosDaReserva(r))} — ${formatKz(valorReserva(r, pkg.preco))}`} />
           <Row k="Data" v={format(new Date(r.data_evento), "d 'de' MMMM 'de' yyyy", { locale: pt })} />
           <Row k="Período" v={labelPeriodos(periodosDaReserva(r))} />
           <Row k="Pagamento" v={r.metodo_pagamento === "express" ? "Multicaixa Express" : r.metodo_pagamento === "iban" ? "Transferência (IBAN)" : "—"} />
