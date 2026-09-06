@@ -90,6 +90,21 @@ async function hydrate() {
   _fornecedores = (fornecedoresRows as Record<string, unknown>[]).map(rowToFornecedor);
   _alteracoes = (alteracoesRows as Record<string, unknown>[]).map(rowToAlteracao);
   if (configRow) _configPagamento = configRow as unknown as ConfigPagamento;
+
+  // Planos (público) + movimentos financeiros (admin)
+  const [planosRows, transacoesRows] = await Promise.all([
+    sfListarPlanos().catch(() => [] as unknown[]),
+    sfListarTransacoes().catch(() => [] as unknown[]),
+  ]);
+  _planos = (planosRows as unknown as Record<string, unknown>[]).map((p) => p as unknown as Plano);
+  _transacoes = (transacoesRows as unknown as Record<string, unknown>[]).map((t) => ({
+    ...(t as unknown as Transacao),
+    valor: Number((t as Record<string, unknown>)["valor"] ?? 0),
+  }));
+  setPacotes(_planos.filter((p) => p.activo).map((p) => ({
+    id: p.id, nome: p.nome, preco: Number(p.preco),
+    descricao: p.descricao ?? [], permite_convites_digitais: p.permite_convites_digitais,
+  })));
   emit();
 }
 
