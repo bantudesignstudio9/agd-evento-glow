@@ -200,7 +200,7 @@ export const Store = {
     const atual = _reservas.find((r) => r.id === id);
     if (atual && (patch.pacote_id !== undefined || patch.periodos !== undefined || patch.periodo !== undefined)) {
       const merged = { ...atual, ...patch } as Reserva;
-      const pkg = PACKAGES.find((p) => p.id === merged.pacote_id);
+      const pkg = getPacote(merged.pacote_id);
       if (pkg) patch = { ...patch, valor_total: calcularPreco(pkg.preco, periodosDaReserva(merged)).total };
     }
     const anterior = _reservas;
@@ -468,6 +468,60 @@ export const Store = {
     await sfAtualizarConfigPagamento({ data: { id: c.id, patch: clean } });
   },
 
+
+  // PLANOS
+  planos: (): Plano[] => _planos,
+  planosActivos: (): Plano[] => _planos.filter((p) => p.activo).sort((a, b) => a.ordem - b.ordem),
+  async guardarPlano(input: Plano) {
+    const row = await sfGuardarPlano({ data: { input: { ...input, preco: Number(input.preco) } as unknown as Record<string, unknown> } });
+    const p = row as unknown as Plano;
+    _planos = _planos.some((x) => x.id === p.id) ? _planos.map((x) => (x.id === p.id ? p : x)) : [..._planos, p];
+    setPacotes(_planos.filter((x) => x.activo).map((x) => ({
+      id: x.id, nome: x.nome, preco: Number(x.preco),
+      descricao: x.descricao ?? [], permite_convites_digitais: x.permite_convites_digitais,
+    })));
+    emit();
+    return p;
+  },
+  async removerPlano(id: string) {
+    const anterior = _planos;
+    _planos = _planos.filter((p) => p.id !== id);
+    emit();
+    try { await sfRemoverPlano({ data: { id } }); }
+    catch (e) { _planos = anterior; emit(); throw e; }
+  },
+
+  // FINANCEIRO
+  transacoes: (): Transacao[] => _transacoes,
+  transacoesDaReserva: (reserva_id: string) => _transacoes.filter((t) => t.reserva_id === reserva_id),
+  async criarTransacao(input: Omit<Transacao, "id" | "criado_em">): Promise<Transacao> {
+    const row = await sfCriarTransacao({ data: { input: { ...input, valor: Number(input.valor) } as unknown as Record<string, unknown> } });
+    const t = { ...(row as unknown as Transacao), valor: Number((row as unknown as Record<string, unknown>)["valor"] ?? 0) };
+    _transacoes = [t, ..._transacoes];
+    emit();
+    return t;
+  },
+  async atualizarTransacao(id: string, patch: Partial<Transacao>) {
+    const anterior = _transacoes;
+    _transacoes = _transacoes.map((t) => (t.id === id ? { ...t, ...patch } : t));
+    emit();
+    try { await sfAtualizarTransacao({ data: { id, patch: patch as unknown as Record<string, unknown> } }); }
+    catch (e) { _transacoes = anterior; emit(); throw e; }
+  },
+  async removerTransacao(id: string) {
+    const anterior = _transacoes;
+    _transacoes = _transacoes.filter((t) => t.id !== id);
+    emit();
+    try { await sfRemoverTransacao({ data: { id } }); }
+    catch (e) { _transacoes = anterior; emit(); throw e; }
+  },
+
+  // IMPORTAÇÃO EM MASSA
+  async importarReservas(rows: Record<string, unknown>[]) {
+    const res = await sfImportarReservas({ data: { rows } }) as unknown as { criadas: number; refs: string[] };
+    await refreshReservas();
+    return res;
+  },
 
   // ADMIN AUTH (provisional — partilha de password até implementarmos auth próprio)
   isAdmin: () => typeof window !== "undefined" && localStorage.getItem(K_ADMIN) === "1",
