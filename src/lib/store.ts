@@ -34,6 +34,8 @@ let _servicos: Servico[] = [];
 let _reservaServicos: ReservaServico[] = [];
 let _alteracoes: ReservaAlteracao[] = [];
 let _configPagamento: ConfigPagamento = DEFAULT_CONFIG_PAGAMENTO;
+let _planos: Plano[] = [];
+let _transacoes: Transacao[] = [];
 let _initialized = false;
 let _initPromise: Promise<void> | null = null;
 
