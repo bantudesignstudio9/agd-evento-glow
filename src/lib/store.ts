@@ -16,6 +16,9 @@ import {
   sfAdicionarReservaServico, sfAtualizarReservaServico, sfRemoverReservaServico,
   sfListarAlteracoes, sfRegistarAlteracoes,
   sfLerConfigPagamento, sfAtualizarConfigPagamento,
+  sfListarPlanos, sfGuardarPlano, sfRemoverPlano,
+  sfListarTransacoes, sfCriarTransacao, sfAtualizarTransacao, sfRemoverTransacao,
+  sfImportarReservas,
 } from "./data.functions";
 
 const K_ADMIN = "agd_admin";
