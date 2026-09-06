@@ -2,9 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   Reserva, Convidado, Period, Status, Espaco, Sessao, Presenca, RsvpStatus,
   Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
-  ConfigPagamento,
+  ConfigPagamento, Plano, Transacao,
 } from "./types";
-import { DEFAULT_CONFIG_PAGAMENTO, periodosDaReserva, calcularPreco, PACKAGES } from "./types";
+import { DEFAULT_CONFIG_PAGAMENTO, periodosDaReserva, calcularPreco, getPacote, setPacotes } from "./types";
 import {
   sfCriarReserva, sfAtualizarReserva, sfRemoverReserva,
   sfAddConvidado, sfAtualizarConvidado, sfRemoverConvidado,
@@ -16,6 +16,9 @@ import {
   sfAdicionarReservaServico, sfAtualizarReservaServico, sfRemoverReservaServico,
   sfListarAlteracoes, sfRegistarAlteracoes,
   sfLerConfigPagamento, sfAtualizarConfigPagamento,
+  sfListarPlanos, sfGuardarPlano, sfRemoverPlano,
+  sfListarTransacoes, sfCriarTransacao, sfAtualizarTransacao, sfRemoverTransacao,
+  sfImportarReservas,
 } from "./data.functions";
 
 const K_ADMIN = "agd_admin";
@@ -31,6 +34,8 @@ let _servicos: Servico[] = [];
 let _reservaServicos: ReservaServico[] = [];
 let _alteracoes: ReservaAlteracao[] = [];
 let _configPagamento: ConfigPagamento = DEFAULT_CONFIG_PAGAMENTO;
+let _planos: Plano[] = [];
+let _transacoes: Transacao[] = [];
 let _initialized = false;
 let _initPromise: Promise<void> | null = null;
 
@@ -87,6 +92,21 @@ async function hydrate() {
   _fornecedores = (fornecedoresRows as Record<string, unknown>[]).map(rowToFornecedor);
   _alteracoes = (alteracoesRows as Record<string, unknown>[]).map(rowToAlteracao);
   if (configRow) _configPagamento = configRow as unknown as ConfigPagamento;
+
+  // Planos (público) + movimentos financeiros (admin)
+  const [planosRows, transacoesRows] = await Promise.all([
+    sfListarPlanos().catch(() => [] as unknown[]),
+    sfListarTransacoes().catch(() => [] as unknown[]),
+  ]);
+  _planos = (planosRows as unknown as Record<string, unknown>[]).map((p) => p as unknown as Plano);
+  _transacoes = (transacoesRows as unknown as Record<string, unknown>[]).map((t) => ({
+    ...(t as unknown as Transacao),
+    valor: Number((t as Record<string, unknown>)["valor"] ?? 0),
+  }));
+  setPacotes(_planos.filter((p) => p.activo).map((p) => ({
+    id: p.id, nome: p.nome, preco: Number(p.preco),
+    descricao: p.descricao ?? [], permite_convites_digitais: p.permite_convites_digitais,
+  })));
   emit();
 }
 
@@ -180,7 +200,7 @@ export const Store = {
     const atual = _reservas.find((r) => r.id === id);
     if (atual && (patch.pacote_id !== undefined || patch.periodos !== undefined || patch.periodo !== undefined)) {
       const merged = { ...atual, ...patch } as Reserva;
-      const pkg = PACKAGES.find((p) => p.id === merged.pacote_id);
+      const pkg = getPacote(merged.pacote_id);
       if (pkg) patch = { ...patch, valor_total: calcularPreco(pkg.preco, periodosDaReserva(merged)).total };
     }
     const anterior = _reservas;
@@ -448,6 +468,60 @@ export const Store = {
     await sfAtualizarConfigPagamento({ data: { id: c.id, patch: clean } });
   },
 
+
+  // PLANOS
+  planos: (): Plano[] => _planos,
+  planosActivos: (): Plano[] => _planos.filter((p) => p.activo).sort((a, b) => a.ordem - b.ordem),
+  async guardarPlano(input: Plano) {
+    const row = await sfGuardarPlano({ data: { input: { ...input, preco: Number(input.preco) } as unknown as Record<string, unknown> } });
+    const p = row as unknown as Plano;
+    _planos = _planos.some((x) => x.id === p.id) ? _planos.map((x) => (x.id === p.id ? p : x)) : [..._planos, p];
+    setPacotes(_planos.filter((x) => x.activo).map((x) => ({
+      id: x.id, nome: x.nome, preco: Number(x.preco),
+      descricao: x.descricao ?? [], permite_convites_digitais: x.permite_convites_digitais,
+    })));
+    emit();
+    return p;
+  },
+  async removerPlano(id: string) {
+    const anterior = _planos;
+    _planos = _planos.filter((p) => p.id !== id);
+    emit();
+    try { await sfRemoverPlano({ data: { id } }); }
+    catch (e) { _planos = anterior; emit(); throw e; }
+  },
+
+  // FINANCEIRO
+  transacoes: (): Transacao[] => _transacoes,
+  transacoesDaReserva: (reserva_id: string) => _transacoes.filter((t) => t.reserva_id === reserva_id),
+  async criarTransacao(input: Omit<Transacao, "id" | "criado_em">): Promise<Transacao> {
+    const row = await sfCriarTransacao({ data: { input: { ...input, valor: Number(input.valor) } as unknown as Record<string, unknown> } });
+    const t = { ...(row as unknown as Transacao), valor: Number((row as unknown as Record<string, unknown>)["valor"] ?? 0) };
+    _transacoes = [t, ..._transacoes];
+    emit();
+    return t;
+  },
+  async atualizarTransacao(id: string, patch: Partial<Transacao>) {
+    const anterior = _transacoes;
+    _transacoes = _transacoes.map((t) => (t.id === id ? { ...t, ...patch } : t));
+    emit();
+    try { await sfAtualizarTransacao({ data: { id, patch: patch as unknown as Record<string, unknown> } }); }
+    catch (e) { _transacoes = anterior; emit(); throw e; }
+  },
+  async removerTransacao(id: string) {
+    const anterior = _transacoes;
+    _transacoes = _transacoes.filter((t) => t.id !== id);
+    emit();
+    try { await sfRemoverTransacao({ data: { id } }); }
+    catch (e) { _transacoes = anterior; emit(); throw e; }
+  },
+
+  // IMPORTAÇÃO EM MASSA
+  async importarReservas(rows: Record<string, unknown>[]) {
+    const res = await sfImportarReservas({ data: { rows } }) as unknown as { criadas: number; refs: string[] };
+    await refreshReservas();
+    return res;
+  },
 
   // ADMIN AUTH (provisional — partilha de password até implementarmos auth próprio)
   isAdmin: () => typeof window !== "undefined" && localStorage.getItem(K_ADMIN) === "1",

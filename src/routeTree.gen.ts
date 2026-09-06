@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminPagamentosRouteImport } from './routes/admin.pagamentos'
 import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
+import { Route as AdminFinanceiroRouteImport } from './routes/admin.financeiro'
 import { Route as AdminEspacosRouteImport } from './routes/admin.espacos'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 import { Route as AdminAgendaRouteImport } from './routes/admin.agenda'
@@ -64,6 +65,11 @@ const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
   path: '/marketplace',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminFinanceiroRoute = AdminFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminEspacosRoute = AdminEspacosRouteImport.update({
   id: '/espacos',
   path: '/espacos',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
   '/admin/': typeof AdminIndexRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
   '/admin': typeof AdminIndexRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/admin/agenda': typeof AdminAgendaRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/espacos': typeof AdminEspacosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
   '/admin/': typeof AdminIndexRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
+    | '/admin/financeiro'
     | '/admin/marketplace'
     | '/admin/pagamentos'
     | '/admin/'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
+    | '/admin/financeiro'
     | '/admin/marketplace'
     | '/admin/pagamentos'
     | '/admin'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/admin/agenda'
     | '/admin/checkin'
     | '/admin/espacos'
+    | '/admin/financeiro'
     | '/admin/marketplace'
     | '/admin/pagamentos'
     | '/admin/'
@@ -260,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMarketplaceRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/financeiro': {
+      id: '/admin/financeiro'
+      path: '/financeiro'
+      fullPath: '/admin/financeiro'
+      preLoaderRoute: typeof AdminFinanceiroRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/espacos': {
       id: '/admin/espacos'
       path: '/espacos'
@@ -309,6 +328,7 @@ interface AdminRouteChildren {
   AdminAgendaRoute: typeof AdminAgendaRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminEspacosRoute: typeof AdminEspacosRoute
+  AdminFinanceiroRoute: typeof AdminFinanceiroRoute
   AdminMarketplaceRoute: typeof AdminMarketplaceRoute
   AdminPagamentosRoute: typeof AdminPagamentosRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -320,6 +340,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAgendaRoute: AdminAgendaRoute,
   AdminCheckinRoute: AdminCheckinRoute,
   AdminEspacosRoute: AdminEspacosRoute,
+  AdminFinanceiroRoute: AdminFinanceiroRoute,
   AdminMarketplaceRoute: AdminMarketplaceRoute,
   AdminPagamentosRoute: AdminPagamentosRoute,
   AdminIndexRoute: AdminIndexRoute,
