@@ -2,9 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   Reserva, Convidado, Period, Status, Espaco, Sessao, Presenca, RsvpStatus,
   Fornecedor, Servico, ReservaServico, ReservaAlteracao, ReservaServicoEstado,
-  ConfigPagamento,
+  ConfigPagamento, Plano, Transacao,
 } from "./types";
-import { DEFAULT_CONFIG_PAGAMENTO, periodosDaReserva, calcularPreco, PACKAGES } from "./types";
+import { DEFAULT_CONFIG_PAGAMENTO, periodosDaReserva, calcularPreco, getPacote, setPacotes } from "./types";
 import {
   sfCriarReserva, sfAtualizarReserva, sfRemoverReserva,
   sfAddConvidado, sfAtualizarConvidado, sfRemoverConvidado,
