@@ -156,6 +156,16 @@
     transition: transform 0.2s ease, filter 0.2s ease;
   }
   .btn-navy:hover { filter: brightness(1.12); transform: scale(1.02); }
+  .inp {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.8);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .inp:focus { border-color: color-mix(in oklab, var(--color-primary) 60%, transparent); }
   .btn-glass {
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(10px);
