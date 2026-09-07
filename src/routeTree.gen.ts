@@ -15,6 +15,7 @@ import { Route as ConviteRouteImport } from './routes/convite'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminPagamentosRouteImport } from './routes/admin.pagamentos'
 import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
 import { Route as AdminFinanceiroRouteImport } from './routes/admin.financeiro'
@@ -53,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRelatoriosRoute = AdminRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminPagamentosRoute = AdminPagamentosRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
+  '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/reservas/': typeof AdminReservasIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
+  '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin': typeof AdminIndexRoute
   '/admin/reservas': typeof AdminReservasIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/pagamentos': typeof AdminPagamentosRoute
+  '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/reservas/': typeof AdminReservasIndexRoute
   '/admin/reservas/$id/editar': typeof AdminReservasIdEditarRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/admin/financeiro'
     | '/admin/marketplace'
     | '/admin/pagamentos'
+    | '/admin/relatorios'
     | '/admin/'
     | '/admin/reservas/'
     | '/admin/reservas/$id/editar'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/admin/financeiro'
     | '/admin/marketplace'
     | '/admin/pagamentos'
+    | '/admin/relatorios'
     | '/admin'
     | '/admin/reservas'
     | '/admin/reservas/$id/editar'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/admin/financeiro'
     | '/admin/marketplace'
     | '/admin/pagamentos'
+    | '/admin/relatorios'
     | '/admin/'
     | '/admin/reservas/'
     | '/admin/reservas/$id/editar'
@@ -256,6 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/relatorios': {
+      id: '/admin/relatorios'
+      path: '/relatorios'
+      fullPath: '/admin/relatorios'
+      preLoaderRoute: typeof AdminRelatoriosRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/pagamentos': {
@@ -331,6 +350,7 @@ interface AdminRouteChildren {
   AdminFinanceiroRoute: typeof AdminFinanceiroRoute
   AdminMarketplaceRoute: typeof AdminMarketplaceRoute
   AdminPagamentosRoute: typeof AdminPagamentosRoute
+  AdminRelatoriosRoute: typeof AdminRelatoriosRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminReservasIndexRoute: typeof AdminReservasIndexRoute
   AdminReservasIdEditarRoute: typeof AdminReservasIdEditarRoute
@@ -343,6 +363,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminFinanceiroRoute: AdminFinanceiroRoute,
   AdminMarketplaceRoute: AdminMarketplaceRoute,
   AdminPagamentosRoute: AdminPagamentosRoute,
+  AdminRelatoriosRoute: AdminRelatoriosRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminReservasIndexRoute: AdminReservasIndexRoute,
   AdminReservasIdEditarRoute: AdminReservasIdEditarRoute,
